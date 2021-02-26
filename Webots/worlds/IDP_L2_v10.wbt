@@ -18,8 +18,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.6736840428769864 0.6934082504329074 0.2556067460074029 0.5850093652168655
-  position 0.8710473213362818 1.0467277885475015 2.0652038447052616
+  orientation -0.1196909893236968 -0.9445940103212993 -0.30564067585948035 2.6345165148953407
+  position 0.016270033014595627 0.9930169473507765 -1.1573196085284463
 }
 Background {
   skyColor [
@@ -31,7 +31,27 @@ Floor {
   appearance Asphalt {
   }
 }
+Solid {
+  translation 0.7 0.09 -0.42
+  children [
+    DEF box Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 1
+        roughness 1
+        metalness 0
+      }
+      geometry Box {
+        size 0.1 0.1 0.1
+      }
+    }
+  ]
+  name "solid(4)"
+  boundingObject USE box
+  physics Physics {
+  }
+}
 Robot {
+  translation 0.42 0 0
   children [
     Compass {
     }
@@ -107,6 +127,8 @@ Robot {
       device [
         RotationalMotor {
           name "turret_motor"
+          acceleration 1000
+          maxVelocity 1000
         }
       ]
       endPoint Solid {
@@ -115,7 +137,7 @@ Robot {
           Group {
             children [
               DistanceSensor {
-                translation 0 -0.09 0.125
+                translation 0 -0.09 0.14
                 rotation 0 1 0 -1.5708
                 name "distance_sensor_front"
                 lookupTable [
@@ -126,8 +148,6 @@ Robot {
                   1.5 8823.5 0
                   2 11764.7 0
                 ]
-                type "sonar"
-                numberOfRays 4
                 aperture 0.5236
                 resolution 0.003
               }
@@ -264,19 +284,20 @@ Robot {
   controller "test_controller"
 }
 target {
-  translation -0.46 0.04 0.75
-  name "target(3)"
-}
-target {
-  translation -0.64 0.05 -0.42
+  translation 0.5 0.05 0.45
   name "target(2)"
 }
 target {
-  translation 0.45 0.05 0.38
+  translation 0.79 0.05 0.38
   name "target(1)"
 }
 target {
-  translation 0.65 0.04 0
+  translation 0.9 0.04 0.04
+  name "target(0)"
+}
+target {
+  translation 0.78 0.04 -0.44
+  name "target(3)"
 }
 DEF Floor_colour Solid {
   translation 0 0.0001 0.4

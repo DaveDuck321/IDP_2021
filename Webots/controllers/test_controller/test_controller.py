@@ -3,13 +3,13 @@
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
 from controller import Robot
-import math
+import math, time
 
 
 class MobileRobot:
     def __init__(self):
         self.robot = Robot()
-        self.timestep = 64
+        self.timestep = 25
         
         # motors
         self.left_drive_motor = self.robot.getDevice("drive_motor_1")
@@ -23,12 +23,14 @@ class MobileRobot:
         self.gps = self.robot.getDevice("gps")
         self.compass = self.robot.getDevice("compass")
         self.front_distance = self.robot.getDevice("distance_sensor_front")
+        # self.rear_distance = self.robot.getDevice("distance_sensor_rear")
         self.initialize_sensors()
         
         self.open_pincer()
         
         # test drive_toward_point()
-        self.navigate_between_waypoints()
+        self.stationary_scan()
+        #self.navigate_between_waypoints()
         
         
     def initialize_motors(self):
@@ -50,8 +52,10 @@ class MobileRobot:
         
          
     def initialize_sensors(self):
-        self.gps.enable(50)
-        self.compass.enable(50)
+        self.gps.enable(self.timestep)
+        self.compass.enable(self.timestep)
+        self.front_distance.enable(self.timestep)
+        # self.rear_distance.enable(25)
         
         
     def open_pincer(self):
@@ -64,6 +68,31 @@ class MobileRobot:
     def close_pincer(self):      
         self.left_pincer.setPosition(0.0)
         self.right_pincer.setPosition(0.0)
+        
+    def distance_data(self, angle):
+        front_dist = self.front_distance.getValue()
+        front_angle = angle
+        # rear_dist = self.rear_distance.getValues()
+        # rear_angle = angle + 3.141592
+        # trasmit data
+        print(front_dist, front_angle)
+        
+    def stationary_scan(self):
+        print("start")
+        self.stop_driving()
+        self.turret_motor.setPosition(0.0)
+        self.turret_motor.setVelocity(self.turret_motor.getMaxVelocity())
+        NUM_SCANS = 100
+        
+        while self.robot.step(self.timestep) != -1:
+            for i in range(NUM_SCANS):
+                self.turret_motor.setPosition(3.141592 * i/NUM_SCANS)
+                self.robot.step(self.timestep)
+                self.distance_data(3.141592 * i/NUM_SCANS)
+            print("finished scan")
+            return 
+            
+        
         
     
     def stop_driving(self):
@@ -111,7 +140,7 @@ class MobileRobot:
         # this is merely a test function, to make sure waypoint navigation works
         # robot will move to each point in list sequencially, stopping still upon
         # reaching the final point
-        waypoint = [(-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1), (-1, 1), (1, 1), (1, -1), (-1, -1), (0, 0)]
+        waypoint = [(0.45, 0.38), (1, -1), (1, 1), (-1, 1), (-1, -1), (-1, 1), (1, 1), (1, -1), (-1, -1), (0, 0)]
         index = 0
         
         while self.robot.step(self.timestep) != -1:  
