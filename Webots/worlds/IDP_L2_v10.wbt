@@ -18,8 +18,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.1196909893236968 -0.9445940103212993 -0.30564067585948035 2.6345165148953407
-  position 0.016270033014595627 0.9930169473507765 -1.1573196085284463
+  orientation -0.640295916384122 -0.707784937574512 -0.2984319379765876 1.3518910240960718
+  position -1.6237202490458762 2.426614248087154 0.9727123347289401
 }
 Background {
   skyColor [
@@ -31,28 +31,26 @@ Floor {
   appearance Asphalt {
   }
 }
-Solid {
-  translation 0.7 0.09 -0.42
-  children [
-    DEF box Shape {
-      appearance PBRAppearance {
-        baseColor 1 0 1
-        roughness 1
-        metalness 0
-      }
-      geometry Box {
-        size 0.1 0.1 0.1
-      }
-    }
-  ]
-  name "solid(4)"
-  boundingObject USE box
-  physics Physics {
-  }
-}
 Robot {
   translation 0.42 0 0
   children [
+    LightSensor {
+      translation 0 0.06 0.09
+      rotation 0 0 1 -1.5708
+      name "light_sensor"
+      lookupTable [
+        0 0 0
+        1 1023 0
+      ]
+      colorFilter 0.1 1 0.1
+      resolution 1
+    }
+    Receiver {
+      channel 2
+    }
+    Emitter {
+      channel 1
+    }
     Compass {
     }
     GPS {
@@ -137,6 +135,21 @@ Robot {
           Group {
             children [
               DistanceSensor {
+                translation 0 -0.09 -0.14
+                rotation 0 1 0 1.5708
+                name "distance_sensor_rear"
+                lookupTable [
+                  0.02 117.6 0
+                  0.1 588.2 0
+                  0.5 2941.2 0
+                  1 5882.4 0
+                  1.5 8823.5 0
+                  2 11764.7 0
+                ]
+                aperture 0.5236
+                resolution 0.003
+              }
+              DistanceSensor {
                 translation 0 -0.09 0.14
                 rotation 0 1 0 -1.5708
                 name "distance_sensor_front"
@@ -193,13 +206,6 @@ Robot {
       boundingObject USE caster_wheel
       physics Physics {
       }
-    }
-    LightSensor {
-      rotation 0 1 0 -1.57
-      lookupTable [
-        0 0 0
-        4 4 0
-      ]
     }
     DEF body Transform {
       translation 0 0.06 -0.04
@@ -283,8 +289,25 @@ Robot {
   }
   controller "test_controller"
 }
+Robot {
+  children [
+    Display {
+      width 240
+      height 240
+    }
+    Receiver {
+      channel 1
+    }
+    Emitter {
+      channel 2
+    }
+  ]
+  name "robot(1)"
+  controller "laptop_green"
+}
 target {
   translation 0.5 0.05 0.45
+  colour 0 1 0
   name "target(2)"
 }
 target {
