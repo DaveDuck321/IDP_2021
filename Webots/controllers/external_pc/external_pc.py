@@ -1,7 +1,5 @@
-"""laptop_green controller."""
+"""external_pc controller."""
 
-# You may need to import some classes of the controller module. Ex:
-#  from controller import Robot, Motor, DistanceSensor
 from controller import Robot
 import struct
 import math
@@ -9,7 +7,7 @@ import numpy as np
 from queue import PriorityQueue
 
 
-class RobotController:
+class ExternalController:
     def __init__(self, emitter_channel, receiver_channel):
         self.robot = Robot()
         self.timestep = 1
@@ -21,7 +19,8 @@ class RobotController:
         self.emitter.setChannel(emitter_channel)
         self.receiver.setChannel(receiver_channel)
         self.receiver.enable(self.timestep)
-        self.display.setColor(2)
+
+        self.display.setColor(0xFF00FF)
 
         self.dummy()
         self.process_data()
@@ -92,7 +91,7 @@ class RobotController:
 
 
 def main():
-    green_laptop = RobotController(emitter_channel=2, receiver_channel=1)
+    controller = ExternalController(emitter_channel=2, receiver_channel=1)
 
 
 if __name__ == "__main__":

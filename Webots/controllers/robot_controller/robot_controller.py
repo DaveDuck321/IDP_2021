@@ -1,19 +1,17 @@
-"""test_controller controller."""
+"""robot_controller controller."""
 
-# You may need to import some classes of the controller module. Ex:
-#  from controller import Robot, Motor, DistanceSensor
 from controller import Robot
 import math
 import time
 import struct
 
 
-class MobileRobot:
+class RobotController:
     def __init__(self):
         self.robot = Robot()
         self.timestep = 5
 
-        # motors
+        # Get all motors
         self.left_drive_motor = self.robot.getDevice("drive_motor_1")
         self.right_drive_motor = self.robot.getDevice("drive_motor_2")
         self.turret_motor = self.robot.getDevice("turret_motor")
@@ -21,12 +19,13 @@ class MobileRobot:
         self.right_pincer = self.robot.getDevice("pincer_motor_2")
         self.initialize_motors()
 
-        # sensors
+        # Get all sensors
         self.gps = self.robot.getDevice("gps")
         self.compass = self.robot.getDevice("compass")
         self.front_distance = self.robot.getDevice("distance_sensor_front")
         self.rear_distance = self.robot.getDevice("distance_sensor_rear")
         self.light = self.robot.getDevice("light_sensor")
+        
         self.emitter = self.robot.getDevice(
             "emitter")    # channel 1 robot -> controller
         self.receiver = self.robot.getDevice(
@@ -191,7 +190,7 @@ class MobileRobot:
 
 
 def main():
-    fluffy = MobileRobot()
+    fluffy = RobotController()
 
 
 if __name__ == "__main__":
