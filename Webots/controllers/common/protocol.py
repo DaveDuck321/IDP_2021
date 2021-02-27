@@ -1,9 +1,14 @@
 """ Defines the messages that may be sent over the radio """
 
+from common import util
+
 
 class Message:
     def __init__(self):
         self.type = self.get_type()
+
+    def __repr__(self):
+        return f"Type: {self.type}"
 
     @staticmethod
     def get_type():
@@ -13,22 +18,64 @@ class Message:
         """
         raise NotImplementedError()
 
+# ---------------------------------
+# Robot --> Controller
+# ---------------------------------
 
-class ScanReading(Message):
-    def __init__(self, readings):
+
+class ScanDistanceReading(Message):
+    def __init__(self, robot_position, robot_bearing,
+                 arm_angle, distance_readings):
         Message.__init__(self)
+        self.robot_position = util.filter_nan(robot_position)
+        self.robot_bearing = util.filter_nan(robot_bearing)
+        self.arm_angle = util.filter_nan(arm_angle)
+        self.distance_readings = util.filter_nan(distance_readings)
+
+    def __repr__(self):
+        return f"Type:{self.type}, pos:{self.robot_position}, sensors:{self.distance_readings}"
 
     @staticmethod
     def get_type():
-        return "1"
+        return "scan_distance_reading"
 
     @classmethod
     def build_from_JSON(cls, json_data):
         assert json_data["type"] == cls.get_type()
-        return cls(json_data["readings"])
+
+        return cls(
+            json_data["robot_position"], json_data["robot_bearing"],
+            json_data["arm_angle"], json_data["distance_readings"]
+        )
+
+# ---------------------------------
+# Controller --> Robot
+# ---------------------------------
 
 
-MESSAGE_MAPPINGS = {ScanReading.get_type(): ScanReading}
+class WaypointList(Message):
+    def __init__(self, waypoints):
+        Message.__init__(self)
+        self.waypoints = waypoints
+
+    def __repr__(self):
+        return f"Type:{self.type}, Waypoints:{self.waypoints}"
+
+    @staticmethod
+    def get_type():
+        return "new_waypoint_list"
+
+    @classmethod
+    def build_from_JSON(cls, json_data):
+        assert json_data["type"] == cls.get_type()
+
+        return cls(json_data["waypoints"])
+
+
+MESSAGE_MAPPINGS = {
+    ScanDistanceReading.get_type(): ScanDistanceReading,
+    WaypointList.get_type(): WaypointList
+}
 
 
 def build_message_from_JSON(json_data):
