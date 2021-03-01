@@ -101,6 +101,7 @@ class RobotController:
                 self.distance_data(3.141592 * i/NUM_SCANS, bearing, gps_data)
             return
     """
+
     def process_message(self, message):
         """
             Take action on the received message.
