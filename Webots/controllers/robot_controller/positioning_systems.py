@@ -61,6 +61,23 @@ class PositioningSystem:
         compass_data = self._compass.getValues()
         return util.get_bearing((sign * compass_data[2], sign * compass_data[0]), (0, 0))
 
+    def get_bearing_error(self, target):
+        """
+            Returns the corrected bearing error between current bearing and the bearing
+            of a target point.
+        """
+        current_position = self.get_2D_position()
+        current_bearing = self.get_world_bearing()
+        goal_bearing = util.get_bearing(target, current_position)
+
+        # correct for errors due to current bearing and target bearing being between 0 to 2pi
+        bearing_error = current_bearing - goal_bearing
+        if bearing_error > math.pi:
+            bearing_error -= 2 * math.pi
+        elif bearing_error < -math.pi:
+            bearing_error += 2 * math.pi
+        return bearing_error
+
     def get_distance_readings(self):
         """
             Returns transformed distances as measured by the distance sensors.

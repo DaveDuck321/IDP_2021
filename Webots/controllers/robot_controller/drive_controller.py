@@ -52,26 +52,14 @@ class DriveController:
         return self.__waypoint_index == len(self.__waypoints)
 
     def navigate_toward_point(self, positioning_system, destination):
-        max_speed = self._left_motor.getMaxVelocity()
+        max_speed = self._left_motor.getMaxVelocity() / 2
 
         # the importance of this value depends on the distance away from
         # the point. Some fine tuning later down the line may be necessary
-        p = 10.0
+        p = 20.0
+        error = positioning_system.get_bearing_error(destination)
 
-        current_position = positioning_system.get_2D_position()
-        current_bearing = positioning_system.get_world_bearing()
-
-        # Use proportional control based on error in orientation between
-        # the current robot orientation and the bearing of the waypoint
-        goal_bearing = util.get_bearing(destination, current_position)
-
-        # Limit bearing to range -pi/2 to pi/2
-        if current_bearing < -math.pi / 2.0 or current_bearing > math.pi / 2.0:
-            current_bearing = positioning_system.get_world_bearing(-1)
-            goal_bearing = util.get_bearing(current_position, destination)
-
-        error = current_bearing - goal_bearing
-
+        """
         left_speed = min(max(max_speed / 2 - error * p, -max_speed), max_speed)
         right_speed = min(max(max_speed / 2 + error * p, -max_speed), max_speed)
 
@@ -82,8 +70,25 @@ class DriveController:
         elif error < 0.0:
             left_speed = max_speed
             right_speed = max(max_speed + p * error, -max_speed)
-        """
 
         # set drive motor speed
         self._left_motor.setVelocity(-left_speed)
         self._right_motor.setVelocity(-right_speed)
+
+    def turn_toward_point(self, positioning_system, target, tolerance=math.pi / 180.0):
+        """
+            For the tick, rotate toward the bearing of a specified target point.
+        """
+        error = positioning_system.get_bearing_error(target)
+        if error <= tolerance:
+            return True
+
+        p = 20.0
+        max_speed = self._left_motor.getMaxVelocity() / 2
+
+        left_speed = min(max(-error * p, -max_speed), max_speed)
+        right_speed = min(max(error * p, -max_speed), max_speed)
+
+        self._left_motor.setVelocity(-left_speed)
+        self._right_motor.setVelocity(-right_speed)
+        return False
