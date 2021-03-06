@@ -4,7 +4,7 @@ PROTO TotalUltrasonicSensor [
       field SFVec3f translation 0 0 0
       field SFString name "Ultrasonic_Sensor"
   ]
-  {Robot {
+  {Transform {
   translation IS translation
   rotation IS rotation
   children [
