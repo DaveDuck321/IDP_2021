@@ -1,6 +1,16 @@
 from common import util
 import math
 
+SPEED_OF_SOUND = 343
+
+
+def get_echo_distance(time_us):
+    """
+        Returns the distance (d) between a sound source and the reflection point.
+        The echo pulse was received time_us after the initial pulse and traveled 2*d.
+    """
+    return (SPEED_OF_SOUND * time_us) / (2e6)
+
 
 class PositioningSystem:
     def __init__(self, turret_motor, gps, compass,
@@ -57,6 +67,6 @@ class PositioningSystem:
             (front_read, rear_reading)
         """
         return (
-            self._front_distance.getValue(),
-            self._rear_distance.getValue()
+            get_echo_distance(self._front_distance.getValue()),
+            get_echo_distance(self._rear_distance.getValue())
         )

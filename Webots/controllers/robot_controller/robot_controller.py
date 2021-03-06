@@ -8,6 +8,7 @@ from controller import Robot
 from drive_controller import DriveController
 from positioning_systems import PositioningSystem
 from pincer_controller import PincerController
+from ultrasonic_emulator import RealUltrasonic
 
 from common.communication import Radio
 from common import protocol
@@ -43,8 +44,8 @@ class RobotController:
             self.robot.getDevice("turret_motor"),
             self.robot.getDevice("gps"),
             self.robot.getDevice("compass"),
-            self.robot.getDevice("distance_sensor_front"),
-            self.robot.getDevice("distance_sensor_rear"),
+            RealUltrasonic(self.robot, "distance_sensor_front", 21),
+            RealUltrasonic(self.robot, "distance_sensor_rear", 21),
             sampling_rate=sensor_polling
         )
 
