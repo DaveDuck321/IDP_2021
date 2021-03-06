@@ -159,6 +159,9 @@ class RobotController:
         # Get the lastest information from controller
         self.process_controller_instructions()
 
+        # Update the controller
+        self.send_new_scan()
+
         # Execute the current task
         if self.current_task == Tasks.NAVIGATE_TO_WAYPOINT:
             if self.drive_controller.navigate_waypoints(self.positioning_system):

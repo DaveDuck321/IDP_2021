@@ -7,6 +7,7 @@ sys.path.append("..")
 from controller import Robot
 from common.communication import Radio
 from common import protocol
+from mapping import MappingController
 import pathfinding
 
 import numpy as np
@@ -18,6 +19,8 @@ class ExternalController:
     def __init__(self, emitter_channel, receiver_channel, polling_time=1):
         self.robot = Robot()
 
+        # Controller IO
+
         self.radio = Radio(
             self.robot.getDevice("emitter"),
             self.robot.getDevice("receiver")
@@ -25,8 +28,10 @@ class ExternalController:
         self.radio.set_emitter_channel(emitter_channel)
         self.radio.set_receiver_channel(receiver_channel)
 
-        self.display = self.robot.getDevice("display")
-        self.display.setColor(0xFF00FF)
+        # Controller state
+        self.mapping_controller = MappingController(
+            self.robot.getDevice("display")
+        )
 
         self.produce_dummy_path()
 
@@ -46,7 +51,12 @@ class ExternalController:
 
     def process_message(self, message):
         if isinstance(message, protocol.ScanDistanceReading):
-            print("[LOG] reading received: ", message.robot_position)
+            self.mapping_controller.update_with_scan_result(
+                message.robot_position,
+                message.robot_bearing,
+                message.arm_angle,
+                message.distance_readings
+            )
         else:
             raise NotImplementedError()
 
@@ -61,6 +71,7 @@ class ExternalController:
     def tick(self):
         # Check for robot messages, take an necessary actions
         self.process_robot_messages()
+        self.mapping_controller.output_to_display()
 
 
 def main():

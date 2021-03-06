@@ -51,12 +51,14 @@ class Radio:
         # Restore settings for normal operation
         self._emitter.setChannel(old_channel)
 
-    def send_message(self, message_obj):
+    def send_message(self, message_obj, debug=False):
         """
             Sends a single Message object via the emitter.
         """
         assert isinstance(message_obj, Message)
 
-        print("[INFO] Sent message:", message_obj)
+        if debug:
+            print("[INFO] Sent message:", message_obj)
+
         message_string = json.dumps(message_obj, default=vars)
         self._emitter.send(message_string.encode('utf-8'))

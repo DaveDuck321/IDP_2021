@@ -27,10 +27,10 @@ class ScanDistanceReading(Message):
     def __init__(self, robot_position, robot_bearing,
                  arm_angle, distance_readings):
         Message.__init__(self)
-        self.robot_position = util.filter_nan(robot_position)
+        self.robot_position = util.filter_nans(robot_position)
         self.robot_bearing = util.filter_nan(robot_bearing)
         self.arm_angle = util.filter_nan(arm_angle)
-        self.distance_readings = util.filter_nan(distance_readings)
+        self.distance_readings = util.filter_nans(distance_readings)
 
     def __repr__(self):
         return f"Type:{self.type}, pos:{self.robot_position}, sensors:{self.distance_readings}"

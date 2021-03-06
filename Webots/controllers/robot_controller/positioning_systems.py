@@ -28,24 +28,27 @@ class PositioningSystem:
 
         # Motor for sensor turret
         self._turret_motor = turret_motor
-        self._turret_motor.setPosition(math.inf)
-        self._turret_motor.setVelocity(0.0)
+        self._turret_motor.setPosition(0)
+        self._turret_motor.setVelocity(10.0)
 
-        self.__turret_angle = 0
+        self.__turret_target_angle = 0
+
+    def spin_turret(self, speed):
+        self.set_turret_angle(self.get_turret_angle() + speed)
 
     def set_turret_angle(self, angle):
         """
             Moves the turret motor to the specified angle.
         """
-        self.turret_motor.setPosition(angle)
-        self.__turret_angle = angle
+        self._turret_motor.setPosition(angle)
+        self.__turret_target_angle = angle
 
-    def get_turret_angle(self, angle):
+    def get_turret_angle(self):
         """
             Get the current turret angle.
             note: set_turret_angle should not be called shortly before
         """
-        return self.__turret_angle
+        return self.__turret_target_angle
 
     def get_2D_position(self):
         """
