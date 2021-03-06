@@ -56,7 +56,7 @@ class DriveController:
 
         # the importance of this value depends on the distance away from
         # the point. Some fine tuning later down the line may be necessary
-        p = 20.0
+        p = 10.0
 
         current_position = positioning_system.get_2D_position()
         current_bearing = positioning_system.get_world_bearing()
@@ -72,13 +72,18 @@ class DriveController:
 
         error = current_bearing - goal_bearing
 
+        left_speed = min(max(max_speed / 2 - error * p, -max_speed), max_speed)
+        right_speed = min(max(max_speed / 2 + error * p, -max_speed), max_speed)
+
+        """
         if error > 0.0:
             left_speed = max(max_speed - p * error, -max_speed)
             right_speed = max_speed
         elif error < 0.0:
             left_speed = max_speed
             right_speed = max(max_speed + p * error, -max_speed)
+        """
 
         # set drive motor speed
-        self._left_motor.setVelocity(left_speed)
-        self._right_motor.setVelocity(right_speed)
+        self._left_motor.setVelocity(-left_speed)
+        self._right_motor.setVelocity(-right_speed)
