@@ -413,34 +413,14 @@ children [
                 }
                 ]
             }
-            DistanceSensor {
+            TotalUltrasonicSensor {
                 translation 0.2005 -0.08 0
                 name "distance_sensor_front"
-                lookupTable [
-                0.02 117.6 0
-                0.1 588.2 0
-                0.5 2941.2 0
-                1 5882.4 0
-                1.5 8823.5 0
-                2 11764.7 0
-                ]
-                aperture 0.5236
-                resolution 0.003
             }
-            DistanceSensor {
+            TotalUltrasonicSensor {
                 translation -0.2005 -0.08 0
                 rotation 0 1 0 3.14159
                 name "distance_sensor_rear"
-                lookupTable [
-                0.02 117.6 0
-                0.1 588.2 0
-                0.5 2941.2 0
-                1 5882.4 0
-                1.5 8823.5 0
-                2 11764.7 0
-                ]
-                aperture 0.5236
-                resolution 0.003
             }
             Transform {
                 translation 0.2 -0.045 0
