@@ -122,7 +122,12 @@ class MappingController:
 
         if ULTRASOUND_NOISE < reading_delta < 3 * ULTRASOUND_NOISE:
             # In proximity of wall, can't say anything for certain
-            pass
+            # Vote against it with half a vote
+            fov_range = np.logical_and(
+                bearings < ULTRASOUND_ANGLE,
+                distances > 0
+            )
+            self._probability_count += np.where(fov_range, 0.5, 0)
 
         elif detected_distance > ULTRASOUND_RANGE or reading_delta < ULTRASOUND_NOISE:
             # No block was detected, with a relatively high certainty
@@ -169,7 +174,7 @@ class MappingController:
     def output_to_display(self):
         probability_map = self.get_color_probability_map()
 
-        # Draw robot positions to visualization
+        # Draw robot and sensor positions to visualization
         robot_pos = _to_screenspace(self.__last_robot_position)
         probability_map[robot_pos[0], robot_pos[1], 0] = 255
         probability_map[robot_pos[0], robot_pos[1], 1] = 0
