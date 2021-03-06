@@ -33,7 +33,7 @@ class DriveController:
         self._left_motor.setVelocity(0.0)
         self._right_motor.setVelocity(0.0)
 
-    def navigate_waypoints(self, positioning_system, tolerance=0.03):
+    def navigate_waypoints(self, positioning_system, tolerance=0.03, reverse=False):
         """
             For this tick, attempt to navigate towards the next waypoint.
             Returns True if the final waypoint has been reached.
