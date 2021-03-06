@@ -18,8 +18,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.640295916384122 -0.707784937574512 -0.2984319379765876 1.3518910240960718
-  position -1.6237202490458762 2.426614248087154 0.9727123347289401
+  orientation 0.042873040208419574 0.9829202310691245 0.17896849381471044 3.1484451772959576
+  position -0.1537551821157275 2.044919616014292 -4.942959942992639
 }
 Background {
   skyColor [
@@ -30,264 +30,6 @@ Floor {
   size 2.4 2.4
   appearance Asphalt {
   }
-}
-Robot {
-  translation 0.42 0 0
-  children [
-    LightSensor {
-      translation 0 0.06 0.09
-      rotation 0 0 1 -1.5708
-      name "light_sensor"
-      lookupTable [
-        0 0 0
-        1 1023 0
-      ]
-      colorFilter 0.1 1 0.1
-      resolution 1
-    }
-    Receiver {
-      channel 2
-    }
-    Emitter {
-      channel 1
-    }
-    Compass {
-    }
-    GPS {
-    }
-    HingeJoint {
-      jointParameters HingeJointParameters {
-        axis 0 1 0
-        anchor -0.025 0.035 0.06
-      }
-      device [
-        RotationalMotor {
-          name "pincer_motor_2"
-        }
-      ]
-      endPoint Solid {
-        translation -0.025 0.035 0.09
-        children [
-          DEF pincer Group {
-            children [
-              Shape {
-                appearance PBRAppearance {
-                }
-                geometry Box {
-                  size 0.003 0.05 0.06
-                }
-              }
-            ]
-          }
-        ]
-        name "solid(5)"
-        boundingObject USE pincer
-        physics Physics {
-        }
-      }
-    }
-    HingeJoint {
-      jointParameters HingeJointParameters {
-        axis 0 1 0
-        anchor 0.025 0.035 0.06
-      }
-      device [
-        RotationalMotor {
-          name "pincer_motor_1"
-        }
-      ]
-      endPoint Solid {
-        translation 0.025 0.035 0.09
-        children [
-          DEF pincer Group {
-            children [
-              Shape {
-                appearance PBRAppearance {
-                }
-                geometry Box {
-                  size 0.003 0.05 0.06
-                }
-              }
-            ]
-          }
-        ]
-        name "solid(4)"
-        boundingObject USE pincer
-        physics Physics {
-        }
-      }
-    }
-    HingeJoint {
-      jointParameters HingeJointParameters {
-        axis 0 1 0
-        anchor 0 0.115 0
-      }
-      device [
-        RotationalMotor {
-          name "turret_motor"
-          acceleration 1000
-          maxVelocity 1000
-        }
-      ]
-      endPoint Solid {
-        translation 0 0.115 0
-        children [
-          Group {
-            children [
-              DistanceSensor {
-                translation 0 -0.09 -0.14
-                rotation 0 1 0 1.5708
-                name "distance_sensor_rear"
-                lookupTable [
-                  0.02 117.6 0
-                  0.1 588.2 0
-                  0.5 2941.2 0
-                  1 5882.4 0
-                  1.5 8823.5 0
-                  2 11764.7 0
-                ]
-                aperture 0.5236
-                resolution 0.003
-              }
-              DistanceSensor {
-                translation 0 -0.09 0.14
-                rotation 0 1 0 -1.5708
-                name "distance_sensor_front"
-                lookupTable [
-                  0.02 117.6 0
-                  0.1 588.2 0
-                  0.5 2941.2 0
-                  1 5882.4 0
-                  1.5 8823.5 0
-                  2 11764.7 0
-                ]
-                aperture 0.5236
-                resolution 0.003
-              }
-              Transform {
-                translation 0 -0.05 0.12
-                children [
-                  Shape {
-                    appearance PBRAppearance {
-                    }
-                    geometry Box {
-                      size 0.01 0.1 0.01
-                    }
-                  }
-                ]
-              }
-              Shape {
-                appearance PBRAppearance {
-                }
-                geometry Box {
-                  size 0.01 0.01 0.25
-                }
-              }
-            ]
-          }
-        ]
-        name "solid(3)"
-      }
-    }
-    Solid {
-      translation 0 0.01 -0.12
-      children [
-        DEF caster_wheel Shape {
-          appearance PBRAppearance {
-            baseColor 0.5 0.5 0.5
-          }
-          geometry Sphere {
-            radius 0.01
-          }
-        }
-      ]
-      name "solid(2)"
-      contactMaterial "slippy"
-      boundingObject USE caster_wheel
-      physics Physics {
-      }
-    }
-    DEF body Transform {
-      translation 0 0.06 -0.04
-      children [
-        Shape {
-          appearance PBRAppearance {
-            baseColor 0 1 0
-            roughness 1
-            metalness 0
-          }
-          geometry Box {
-            size 0.15 0.1 0.2
-          }
-        }
-      ]
-    }
-    HingeJoint {
-      jointParameters HingeJointParameters {
-        anchor -0.08 0.05 0
-      }
-      device [
-        RotationalMotor {
-          name "drive_motor_2"
-        }
-      ]
-      endPoint Solid {
-        translation -0.0799999992169501 0.050000255479939366 -1.165132989193784e-05
-        rotation 0.0008216087360406806 -0.0008216119450159905 -0.9999993249562206 4.712384632093233
-        children [
-          DEF wheel Shape {
-            appearance PBRAppearance {
-              baseColor 0 0 0
-              roughness 1
-              metalness 0
-            }
-            geometry Cylinder {
-              height 0.01
-              radius 0.05
-            }
-          }
-        ]
-        name "solid(1)"
-        boundingObject USE wheel
-        physics Physics {
-        }
-      }
-    }
-    HingeJoint {
-      jointParameters HingeJointParameters {
-        anchor 0.08 0.05 0
-      }
-      device [
-        RotationalMotor {
-          name "drive_motor_1"
-        }
-      ]
-      endPoint Solid {
-        translation 0.08000000078305933 0.05000025763117322 -1.1651286625896926e-05
-        rotation 0.0008180946623314349 -0.0008180978583993661 -0.9999993307182847 4.712384637855301
-        children [
-          DEF wheel Shape {
-            appearance PBRAppearance {
-              baseColor 0 0 0
-              roughness 1
-              metalness 0
-            }
-            geometry Cylinder {
-              height 0.01
-              radius 0.05
-            }
-          }
-        ]
-        boundingObject USE wheel
-        physics DEF wheel_physics Physics {
-        }
-      }
-    }
-  ]
-  boundingObject USE body
-  physics Physics {
-  }
-  controller "robot_controller"
 }
 Robot {
   children [
@@ -394,4 +136,13 @@ DEF WALL_4 Solid {
 }
 TexturedBackgroundLight {
   texture "empty_office"
+}
+small_or_fluffy {
+  translation 0 0.1 0.39
+  enabled FALSE
+}
+small_or_fluffy {
+  name "Fluffy"
+  translation 0 0.1 -0.4
+  color 0 1 0
 }
