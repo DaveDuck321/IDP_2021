@@ -85,12 +85,9 @@ class MappingController:
             Processes a pair of sensor measurements and updates the internal probability maps based on the reading.
             It is assumed that these sensor lie on either end of the robot's arm.
         """
-        robot_bearing = util.normalize_radian(robot_bearing)
-        arm_angle = util.normalize_radian(arm_angle)
-
         sensor_bearings = (
-            robot_bearing - arm_angle,
-            robot_bearing - arm_angle + np.pi
+            util.normalize_radian(robot_bearing - arm_angle),
+            util.normalize_radian(robot_bearing - arm_angle + np.pi)
         )
         sensor_positions = (
             get_sensor_position(robot_position, sensor_bearings[0]),
