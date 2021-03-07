@@ -2,10 +2,10 @@ from controller import Display
 from common import util
 import numpy as np
 
-ARM_LENGTH = 0.2  # 10 cm
+ARM_LENGTH = 0.2  # 20 cm
 ULTRASOUND_RANGE = 1.3  # 1.3 m
-ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 0.3 cm
-ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 total degrees FOV
+ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 3 cm
+ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 degrees total FOV
 WORLD_BOUNDS = np.array([1.2 - 0.01, 1.2 - 0.01])  # UPDATE THIS WITH WORLD FILE
 WORLD_RESOLUTION = 100  # px per meter (reduce for faster computation)
 MAP_RESULTION = (
@@ -30,12 +30,18 @@ def _to_worldspace(_coords):
 
 
 def estimate_measured_boarder_distance(sensor_pos, sensor_facing):
+    """
+        Returns the shortest distance the ultrasound sensor could measure if it
+        were facing in this direction with no obstacles.
+    """
     angles = sensor_facing + np.linspace(-ULTRASOUND_ANGLE, ULTRASOUND_ANGLE, 30)
     return get_boarder_distances(sensor_pos, angles)
 
 
 def get_boarder_distances(sensor_pos, sensor_facing):
-    # Top edge
+    """
+        Returns the ray distance to the world boarder given a position and bearing.
+    """
     x_dir = np.cos(sensor_facing)
     y_dir = np.sin(sensor_facing)
 
@@ -56,13 +62,27 @@ def get_sensor_position(robot_pos, sensor_angle):
     )
 
 
+def get_intensity_map_pixels(intensity_map):
+    """
+        Outputs a greyscale RGB image representing a brightness intensity map.
+    """
+    brightness_map = 255 * intensity_map
+
+    output_map = np.empty((*MAP_RESULTION, 3))
+    output_map[:, :, 0] = brightness_map
+    output_map[:, :, 1] = brightness_map
+    output_map[:, :, 2] = brightness_map
+
+    return output_map.astype(np.uint8)
+
+
 class MappingController:
     """
         Generates and maintains a probability map of the surrounding environment.
         Sensor reading should be continuously streamed into update_with_scan_result
     """
 
-    def __init__(self, display):
+    def __init__(self, display_explored, display_occupancy):
         # For fast numpy computation
         self._x = np.linspace(-WORLD_BOUNDS[0], WORLD_BOUNDS[0], MAP_RESULTION[0])
         self._y = np.linspace(-WORLD_BOUNDS[1], WORLD_BOUNDS[1], MAP_RESULTION[1])
@@ -70,13 +90,13 @@ class MappingController:
 
         # Contains the probabilities of finding a block in each location
         # The mean probability density function is calculate
-        self._probability_mask = 255 * np.ones(MAP_RESULTION)
+        self._probability_mask = np.ones(MAP_RESULTION)
         self._probability_sum = np.zeros(MAP_RESULTION)
         self._probability_count = np.ones(MAP_RESULTION)
 
-        # Display object for map debugging
-        self._display = display
-        self._display.setColor(0xFF00FF)
+        # Display objects for map debugging
+        self._display_explored = display_explored
+        self._display_occupancy = display_occupancy
         self.__last_robot_position = (0, 0)
         self.__last_sensor_positions = [(0, 0), (0, 0)]
 
@@ -155,39 +175,70 @@ class MappingController:
             self._probability_sum += np.where(fov_range, probabilities, 0)
             self._probability_count += np.where(fov_range, 1, 0)
 
-    def get_color_probability_map(self):
+    def get_clear_movement_map(self):
         """
-            Output a representation of the probability map suitable for displaying as an image.
+            Returns a boolean array of shape MAP_RESULTION.
+            True elements indicate an area is almost certainly safe to enter:
+                its been explored and nothing was found.
+            NOTE: This does not account for robot width, take care
         """
+        return np.logical_and(
+            self.get_explore_status_map(),
+            self.get_occupancy_map() < 0.005
+        )
+
+    def get_explore_status_map(self):
+        """
+            Returns a boolean array of shape MAP_RESULTION.
+            True elements indicate that this area has already been scanned.
+        """
+        return self._probability_count != 1
+
+    def get_occupancy_map(self):
+        """
+            Outputs a probability map where each tile is assigned a value between 0 and 1.
+            1 - Certainly contains a object
+            0 - Either unexplored or empty
+        """
+
+        # Normalize all probabilities according to the number of votes
         probabilities = self._probability_sum / self._probability_count
         max_probability_intensity = max(np.amax(probabilities), 0.1)
-        output_map = np.empty((*MAP_RESULTION, 3))
-        output_map[:, :, 0] = self._probability_mask * (probabilities / max_probability_intensity)
-        output_map[:, :, 1] = output_map[:, :, 0]
-        output_map[:, :, 2] = output_map[:, :, 0]
 
-        return output_map.astype(np.uint8)
+        return self._probability_mask * (probabilities / max_probability_intensity)
 
-    def output_to_display(self):
-        probability_map = self.get_color_probability_map()
+    def output_to_displays(self):
+        occupancy_map = get_intensity_map_pixels(self.get_occupancy_map())
 
         # Draw robot and sensor positions to visualization
         robot_pos = _to_screenspace(self.__last_robot_position)
-        probability_map[robot_pos[0], robot_pos[1], 0] = 255
-        probability_map[robot_pos[0], robot_pos[1], 1] = 0
-        probability_map[robot_pos[0], robot_pos[1], 2] = 0
+        occupancy_map[robot_pos[0], robot_pos[1], 0] = 255
+        occupancy_map[robot_pos[0], robot_pos[1], 1] = 0
+        occupancy_map[robot_pos[0], robot_pos[1], 2] = 0
 
         for sensor in self.__last_sensor_positions:
             sensor_pos = _to_screenspace(sensor)
-            probability_map[sensor_pos[0], sensor_pos[1], 1] = 255
-            probability_map[robot_pos[0], sensor_pos[1], 0] = 0
-            probability_map[robot_pos[0], sensor_pos[1], 2] = 0
+            occupancy_map[sensor_pos[0], sensor_pos[1], 1] = 255
+            occupancy_map[robot_pos[0], sensor_pos[1], 0] = 0
+            occupancy_map[robot_pos[0], sensor_pos[1], 2] = 0
 
-        image = self._display.imageNew(
-            probability_map.tobytes(),
+        # Output to webots display
+        image = self._display_occupancy.imageNew(
+            occupancy_map.tobytes(),
             Display.RGB,
             MAP_RESULTION[0],
             MAP_RESULTION[1]
         )
-        self._display.imagePaste(image, 0, 0, False)
-        self._display.imageDelete(image)
+        self._display_occupancy.imagePaste(image, 0, 0, False)
+        self._display_occupancy.imageDelete(image)
+
+        # Output movement status map
+        movement_status = self.get_clear_movement_map()
+        image = self._display_explored.imageNew(
+            get_intensity_map_pixels(movement_status).tobytes(),
+            Display.RGB,
+            MAP_RESULTION[0],
+            MAP_RESULTION[1]
+        )
+        self._display_explored.imagePaste(image, 0, 0, False)
+        self._display_explored.imageDelete(image)

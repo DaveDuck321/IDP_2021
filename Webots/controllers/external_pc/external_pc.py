@@ -30,7 +30,8 @@ class ExternalController:
 
         # Controller state
         self.mapping_controller = MappingController(
-            self.robot.getDevice("display")
+            self.robot.getDevice("display_explored"),
+            self.robot.getDevice("display_occupancy")
         )
 
         self.produce_dummy_path()
@@ -71,7 +72,7 @@ class ExternalController:
     def tick(self):
         # Check for robot messages, take an necessary actions
         self.process_robot_messages()
-        self.mapping_controller.output_to_display()
+        self.mapping_controller.output_to_displays()
 
 
 def main():

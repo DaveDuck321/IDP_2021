@@ -34,6 +34,12 @@ Floor {
 Robot {
   children [
     Display {
+      name "display_explored"
+      width 240
+      height 240
+    }
+    Display {
+      name "display_occupancy"
       width 240
       height 240
     }
