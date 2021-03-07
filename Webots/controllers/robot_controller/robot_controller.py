@@ -164,7 +164,7 @@ class RobotController:
 
         # Execute the current task
         if self.current_task == Tasks.NAVIGATE_TO_WAYPOINT:
-            if self.drive_controller.navigate_waypoints(self.positioning_system):
+            if self.drive_controller.navigate_waypoints(self.positioning_system, reverse=True):
                 # Reached final waypoint! Change to grabbing state
                 self.queued_task = Tasks.GRAB_BLOCK
         elif self.current_task == Tasks.STATIONARY_SCAN:

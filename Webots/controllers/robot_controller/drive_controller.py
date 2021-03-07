@@ -44,20 +44,20 @@ class DriveController:
         target_waypoint = self.__waypoints[self.__waypoint_index]
         current_position = positioning_system.get_2D_position()
 
-        self.navigate_toward_point(positioning_system, target_waypoint)
+        self.navigate_toward_point(positioning_system, target_waypoint, reverse)
 
         if util.get_distance(current_position, target_waypoint) < tolerance:
             self.__waypoint_index += 1
 
         return self.__waypoint_index == len(self.__waypoints)
 
-    def navigate_toward_point(self, positioning_system, destination):
+    def navigate_toward_point(self, positioning_system, destination, reverse=False):
         max_speed = self._left_motor.getMaxVelocity() / 2
 
         # the importance of this value depends on the distance away from
         # the point. Some fine tuning later down the line may be necessary
         p = 20.0
-        error = positioning_system.get_bearing_error(destination)
+        error = positioning_system.get_bearing_error(destination, reverse)
 
         """
         left_speed = min(max(max_speed / 2 - error * p, -max_speed), max_speed)
@@ -70,6 +70,9 @@ class DriveController:
         elif error < 0.0:
             left_speed = max_speed
             right_speed = max(max_speed + p * error, -max_speed)
+
+        if reverse:
+            left_speed, right_speed = -right_speed, -left_speed
 
         # set drive motor speed
         self._left_motor.setVelocity(-left_speed)
