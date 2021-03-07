@@ -175,6 +175,9 @@ class RobotController:
             print("[ERROR] Unimplemented task type: ", self.current_task)
             raise NotImplementedError()
 
+        # Demonstrate the mapping for moving turret
+        self.positioning_system.spin_turret(0.01)
+
         # Tick finished, switch tasks if necessary
         self.switch_to_queued_task()
 
