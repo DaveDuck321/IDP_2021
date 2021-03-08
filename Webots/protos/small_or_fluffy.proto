@@ -345,7 +345,7 @@ children [
         children [
             DEF chassis_base Shape {
             appearance PBRAppearance {
-                baseColor 1 0 0
+                baseColor IS color
                 metalness 0
             }
             geometry Box {
