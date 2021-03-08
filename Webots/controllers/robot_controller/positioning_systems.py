@@ -27,11 +27,12 @@ class PositioningSystem:
         self._rear_distance.enable(sampling_rate)
 
         # Motor for sensor turret
+        self.__turret_target_angle = 0
+        self.__target_velocity = turret_motor.getMaxVelocity()
+
         self._turret_motor = turret_motor
         self._turret_motor.setPosition(0)
-        self._turret_motor.setVelocity(10.0)
-
-        self.__turret_target_angle = 0
+        self._turret_motor.setVelocity(self.__target_velocity)
 
     def spin_turret(self, speed):
         self.set_turret_angle(self.get_turret_angle() + speed)

@@ -2,7 +2,8 @@ from controller import Display
 from common import util
 import numpy as np
 
-ARM_LENGTH = 0.2  # 20 cm
+ARM_LENGTH = 0.15  # 150 mm
+ROBOT_RADIUS = 1.4 * ARM_LENGTH
 ULTRASOUND_RANGE = 1.3  # 1.3 m
 ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 3 cm
 ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 degrees total FOV
@@ -58,7 +59,7 @@ def get_static_distance(sensor_pos, sensor_facing, obstacles_pos):
     for obstacle_pos in obstacles_pos:
         a = x_dir ** 2 + y_dir ** 2
         b = 2 * x_dir * (sensor_pos[0] - obstacle_pos[0]) + 2 * y_dir * (sensor_pos[1] - obstacle_pos[1])
-        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - (1.1 * ARM_LENGTH)**2
+        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - ROBOT_RADIUS**2
 
         # Filter invalid values
         determinant = b**2 - 4 * a * c
