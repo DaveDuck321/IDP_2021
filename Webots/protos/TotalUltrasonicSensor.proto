@@ -1,27 +1,33 @@
 PROTO TotalUltrasonicSensor [
-      field SFString controller "void"
       field SFRotation rotation 0 1 0 0
       field SFVec3f translation 0 0 0
       field SFString name "Ultrasonic_Sensor"
   ]
-  {Transform {
-  translation IS translation
-  rotation IS rotation
-  children [
-    %{ RAY_COUNT = 20 }%
-    %{ FOV = 27.2 }%
-    %{ DEGREE_TO_RAD = 2 * 3.14159 / 360 }%
-    %{ for ray_number = 0, RAY_COUNT do }%
-      %{ angle = (-FOV/2) + ray_number * (FOV/RAY_COUNT) }%
-
-        UltrasonicSensor {
-          rotation 0 1 0 %{= DEGREE_TO_RAD * angle}%
-          name %{= '"' .. fields.name.value .. '_ray(' .. ray_number .. ')"'}%
-        }
-
-      %{ end }%
-  ]
-  name IS name
-  controller IS controller
-}
+  {DistanceSensor {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    children [
+      %{ RAY_COUNT = 20 }%
+      %{ FOV = 27.3 }%
+      %{ DEGREE_TO_RAD = 2 * 3.14159 / 360 }%
+      %{ for ray_number = 0, RAY_COUNT do }%
+        %{ angle = (-FOV/2) + ray_number * (FOV/RAY_COUNT) }%
+  
+          UltrasonicSensor {
+            rotation 0 1 0 %{= DEGREE_TO_RAD * angle}%
+            name %{= '"' .. fields.name.value .. '_ray(' .. ray_number .. ')"'}%
+          }
+  
+        %{ end }%
+        Shape {
+            appearance PBRAppearance {
+            roughness 1
+            }
+            geometry Box {
+              size 0.015 0.02 0.045
+            }
+          }
+    ]
+  }
 }

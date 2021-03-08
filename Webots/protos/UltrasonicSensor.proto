@@ -3,7 +3,7 @@ PROTO UltrasonicSensor [
       field SFString name "void"
   ]
   {DistanceSensor {
-      translation 0 0 0.0075
+      translation 0 0 0
       rotation IS rotation
       name IS name
       lookupTable [

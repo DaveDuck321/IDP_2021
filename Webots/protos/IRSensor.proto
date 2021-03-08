@@ -1,0 +1,37 @@
+PROTO IRSensor [
+    field SFVec3f  translation 0 0 0
+    field SFRotation rotation 0 1 0 0
+    field SFString name "IR sensor"
+  ]
+  {DistanceSensor {
+      translation IS translation
+      rotation IS rotation
+      name IS name
+      lookupTable [
+        0.05 3.1 0.05
+        0.06 3.2 0.1
+        0.07 3 0.1
+        0.08 2.7 0.05
+        0.1 2.4 0.043
+        0.15 1.6 0.05
+        0.2 1.35 0.05
+        0.25 1.1 0.1
+        0.3 0.9 0.1
+        0.4 0.75 0.2
+        0.5 0.6 0.2
+        0.8 0.4 0.375
+      ]
+      type "infra-red"
+      children [
+        Shape {
+          appearance PBRAppearance {
+            roughness 1
+          }
+          geometry Box {
+            size 0.013 0.0135 0.0295
+          }
+        }
+      ]
+      }
+    
+  }
