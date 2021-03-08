@@ -7,10 +7,13 @@ class BlockCollection:
         self.pincer_controller = pincer_controller
         self.light = light
         self.robot_color = robot_color
-        self.__block_pos = []
+        # self.__block_pos = []
+        print("testing using hardcoded block position")
+        self.__block_pos = (0.68, -0.44)
         self.__block_color = None
         self.__starting_pos = None
         self.block_collected = False
+        self.wait_for_pincer_index = 0
         self.cur_step = self.inspect_block
 
     def __call__(self):
@@ -26,16 +29,18 @@ class BlockCollection:
     def inspect_block(self):
         if self.drive_controller.turn_toward_point(self.positioning_system, self.__block_pos):
             self.__starting_pos = self.positioning_system.get_2D_position()
+            print(self.__starting_pos)
             self.drive_controller.set_waypoints([self.__block_pos])
             self.cur_step = self.drive_over_block
         return False
 
     def drive_over_block(self):
         if self.drive_controller.navigate_waypoints(self.positioning_system):
-            self.cur_step = self.scan_block_color()
+            self.cur_step = self.scan_block_color
         return False
 
     def scan_block_color(self):
+        self.drive_controller.halt()
         data = self.light.getValue()
         print("[LOG] Color data: ", data)
         if data > 1000:  # completely arbitrary threshold, as Electronics for the real one
@@ -51,23 +56,32 @@ class BlockCollection:
             self.pincer_controller.close_pincer()
             self.block_collected = True
 
-        self.cur_step = self.reverse_away
-        self.cur_step = self.drive_controller.set_waypoints([self.__starting_pos])
+        self.cur_step = self.wait_for_pincer
+        self.drive_controller.set_waypoints([self.__starting_pos])
+        return False
+
+    def wait_for_pincer(self):
+        self.drive_controller.halt()
+        self.wait_for_pincer_index += 1
+        if self.wait_for_pincer_index == 5:
+            self.wait_for_pincer_index = 0
+            self.cur_step = self.reverse_away
         return False
 
     def reverse_away(self):
         if self.drive_controller.navigate_waypoints(self.positioning_system, reverse=True):
             if self.block_collected:
-                self.cur_step = self.return_to_base()
+                self.cur_step = self.return_to_base
                 print("request route from controller back to base")
                 # set the waypoints that were requested as the waypoints for drive_controller.navigate_waypoints()
+                self.drive_controller.set_waypoints([(-0.15, -0.76)])
                 return False
             else:
                 return True
 
     def return_to_base(self):
         if self.drive_controller.navigate_waypoints(self.positioning_system):
-            self.__block_pos = (0.0, 0.0)  # set this as the point where the block needs to be left at
+            self.__block_pos = (-0.15, -0.65)  # set this as the point where the block needs to be left at
             self.cur_step = self.face_dropoff_area
         return False
 
@@ -83,6 +97,6 @@ class BlockCollection:
         if self.drive_controller.navigate_waypoints(self.positioning_system):
             self.pincer_controller.open_pincer()
             self.block_collected = False
-            self.cur_step = self.drive_controller.set_waypoints([self.__starting_pos])
-            self.cur_step = self.reverse_away
+            self.drive_controller.set_waypoints([self.__starting_pos])
+            self.cur_step = self.wait_for_pincer
         return False

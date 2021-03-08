@@ -9,6 +9,7 @@ from drive_controller import DriveController
 from positioning_systems import PositioningSystem
 from pincer_controller import PincerController
 from ultrasonic_emulator import RealUltrasonic
+from block_collection import BlockCollection
 
 from common.communication import Radio
 from common import protocol
@@ -24,6 +25,7 @@ class Tasks(Enum):
     STATIONARY_SCAN = 2
     NAVIGATE_TO_WAYPOINT = 3
     GRAB_BLOCK = 4
+    BLOCK_COLLECTION = 5
 
 
 class RobotController:
@@ -31,6 +33,7 @@ class RobotController:
         self.robot = Robot()
         self.current_task = Tasks.NONE
         self.queued_task = Tasks.NAVIGATE_TO_WAYPOINT
+        self.robot_color = "red"
 
         # Setup radio for communication with external controller
         self.radio = Radio(
@@ -142,6 +145,9 @@ class RobotController:
             self.drive_controller.halt()
         if about_to_start == Tasks.GRAB_BLOCK:
             self.pincer_controller.close_pincer()
+        if about_to_start == Tasks.BLOCK_COLLECTION:
+            self.block_collection_controller = BlockCollection(
+                self.drive_controller, self.positioning_system, self.pincer_controller, self.light, self.robot_color)
 
     def switch_to_queued_task(self):
         """
@@ -166,9 +172,12 @@ class RobotController:
         if self.current_task == Tasks.NAVIGATE_TO_WAYPOINT:
             if self.drive_controller.navigate_waypoints(self.positioning_system):
                 # Reached final waypoint! Change to grabbing state
-                self.queued_task = Tasks.GRAB_BLOCK
+                self.queued_task = Tasks.BLOCK_COLLECTION
         elif self.current_task == Tasks.STATIONARY_SCAN:
             pass
+        elif self.current_task == Tasks.BLOCK_COLLECTION:
+            if self.block_collection_controller():
+                self.queued_task = Tasks.NAVIGATE_TO_WAYPOINT
         elif self.current_task == Tasks.NONE:
             pass  # TODO: maybe query controller here
         else:
