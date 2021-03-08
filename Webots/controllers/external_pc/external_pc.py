@@ -46,6 +46,7 @@ class ExternalController:
         goal = (60, 180)
 
         waypoints = pathfinding.calculate_route(arena_map, start, goal)
+        waypoints = [(0.53, -0.44)]
         message = protocol.WaypointList(waypoints)
 
         self.radio.send_message(message)

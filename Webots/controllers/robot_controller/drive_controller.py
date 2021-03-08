@@ -83,7 +83,7 @@ class DriveController:
             For the tick, rotate toward the bearing of a specified target point.
         """
         error = positioning_system.get_bearing_error(target)
-        if error <= tolerance:
+        if abs(error) <= tolerance:
             return True
 
         p = 20.0
