@@ -32,7 +32,8 @@ class RobotController:
     def __init__(self, sensor_polling=5):
         self.robot = Robot()
         self.current_task = Tasks.NONE
-        self.queued_task = Tasks.NAVIGATE_TO_WAYPOINT
+        self.queued_task = Tasks.NONE
+
         self.robot_color = "red"
 
         # Setup radio for communication with external controller
@@ -77,6 +78,7 @@ class RobotController:
 
     def send_new_scan(self):
         message = protocol.ScanDistanceReading(
+            self.robot.getName(),
             self.positioning_system.get_2D_position(),
             self.positioning_system.get_world_bearing(),
             self.positioning_system.get_turret_angle(),

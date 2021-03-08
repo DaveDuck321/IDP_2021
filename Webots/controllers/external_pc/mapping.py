@@ -29,19 +29,20 @@ def _to_worldspace(_coords):
     return (2 * (coords / MAP_RESULTION) - 1) * WORLD_BOUNDS
 
 
-def estimate_measured_boarder_distance(sensor_pos, sensor_facing):
+def estimate_measured_static_distance(sensor_pos, sensor_facing, obstacles_pos):
     """
         Returns the shortest distance the ultrasound sensor could measure if it
-        were facing in this direction with no obstacles.
+        were facing at bearing sensor_facing and had no unknown targets.
     """
     angles = sensor_facing + np.linspace(-ULTRASOUND_ANGLE, ULTRASOUND_ANGLE, 30)
-    return get_boarder_distances(sensor_pos, angles)
+    return get_static_distance(sensor_pos, angles, obstacles_pos)
 
 
-def get_boarder_distances(sensor_pos, sensor_facing):
+def get_static_distance(sensor_pos, sensor_facing, obstacles_pos):
     """
-        Returns the ray distance to the world boarder given a position and bearing.
+        Returns the ray distance to the nearest static obstacle.
     """
+    # Collisions with walls
     x_dir = np.cos(sensor_facing)
     y_dir = np.sin(sensor_facing)
 
@@ -52,6 +53,23 @@ def get_boarder_distances(sensor_pos, sensor_facing):
     dist_bottom = (-WORLD_BOUNDS[1] - sensor_pos[1]) / y_dir
 
     combined_array = np.array([dist_right, dist_left, dist_top, dist_bottom])
+
+    # Collisions with other robots and static obsticles
+    for obstacle_pos in obstacles_pos:
+        a = x_dir ** 2 + y_dir ** 2
+        b = 2 * x_dir * (sensor_pos[0] - obstacle_pos[0]) + 2 * y_dir * (sensor_pos[1] - obstacle_pos[1])
+        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - (1.1 * ARM_LENGTH)**2
+
+        # Filter invalid values
+        determinant = b**2 - 4 * a * c
+        mask = np.logical_and(determinant > 0, a != 0)
+        a, b, determinant = a[mask], b[mask], determinant[mask]
+
+        distance_outer = (-b - determinant) / (2 * a)
+        distance_inner = (-b + determinant) / (2 * a)
+        distances = np.append(distance_outer, distance_inner)
+        combined_array = np.append(combined_array, distances)
+
     return np.amin(combined_array[combined_array > 0])
 
 
@@ -82,7 +100,7 @@ class MappingController:
         Sensor reading should be continuously streamed into update_with_scan_result
     """
 
-    def __init__(self, display_explored, display_occupancy):
+    def __init__(self, robot_positions_ref, display_explored, display_occupancy):
         # For fast numpy computation
         self._x = np.linspace(-WORLD_BOUNDS[0], WORLD_BOUNDS[0], MAP_RESULTION[0])
         self._y = np.linspace(-WORLD_BOUNDS[1], WORLD_BOUNDS[1], MAP_RESULTION[1])
@@ -97,14 +115,17 @@ class MappingController:
         # Display objects for map debugging
         self._display_explored = display_explored
         self._display_occupancy = display_occupancy
-        self.__last_robot_position = (0, 0)
-        self.__last_sensor_positions = [(0, 0), (0, 0)]
 
-    def update_with_scan_result(self, robot_position, robot_bearing, arm_angle, sensor_readings):
+        self.__robot_positions_ref = robot_positions_ref
+        self.__last_sensor_positions = {}
+
+    def update_with_scan_result(self, robot_name, robot_bearing, arm_angle, sensor_readings):
         """
             Processes a pair of sensor measurements and updates the internal probability maps based on the reading.
             It is assumed that these sensor lie on either end of the robot's arm.
         """
+        robot_position = self.__robot_positions_ref[robot_name]
+
         sensor_bearings = (
             util.normalize_radian(robot_bearing - arm_angle),
             util.normalize_radian(robot_bearing - arm_angle + np.pi)
@@ -113,14 +134,19 @@ class MappingController:
             get_sensor_position(robot_position, sensor_bearings[0]),
             get_sensor_position(robot_position, sensor_bearings[1])
         )
+
+        other_robot_pos = [
+            self.__robot_positions_ref[other_robot]
+            for other_robot in self.__robot_positions_ref
+            if other_robot != robot_name]
+
         for pos, bearing, reading in zip(sensor_positions, sensor_bearings, sensor_readings):
-            self.update_with_distance(reading, bearing, pos)
+            self.update_with_distance(reading, bearing, pos, other_robot_pos)
 
         # Save this info for the visualization
-        self.__last_robot_position = robot_position
-        self.__last_sensor_positions = sensor_positions
+        self.__last_sensor_positions[robot_name] = sensor_positions
 
-    def update_with_distance(self, detected_distance, measurement_angle, scan_position):
+    def update_with_distance(self, detected_distance, measurement_angle, scan_position, obstacles_pos):
         """
             Processes a single distance measurement: updating the internal probability maps based on the reading.
         """
@@ -134,8 +160,8 @@ class MappingController:
         bearings = np.abs(np.arctan2(y_vectors, x_vectors) - measurement_angle)
 
         # If reading is statistically indistinct (2 * sd) from wall, ignore it: it might be a wall
-        distance_from_wall = estimate_measured_boarder_distance(scan_position, measurement_angle)
-        reading_delta = abs(detected_distance - distance_from_wall)
+        distance_from_wall = estimate_measured_static_distance(scan_position, measurement_angle, obstacles_pos)
+        reading_delta = distance_from_wall - detected_distance
 
         if ULTRASOUND_NOISE < reading_delta < 3 * ULTRASOUND_NOISE:
             # In proximity of wall, can't say anything for certain
@@ -151,7 +177,7 @@ class MappingController:
             # Mark exclusion reading on map with 90% certainty
             exclusion_mask = np.logical_and(
                 np.logical_and(
-                    distances < ULTRASOUND_RANGE - 2 * ULTRASOUND_NOISE,
+                    distances < distance_from_wall - ULTRASOUND_NOISE,
                     bearings < 0.8 * ULTRASOUND_ANGLE
                 ),
                 distances > 0
@@ -214,16 +240,19 @@ class MappingController:
         occupancy_map = get_intensity_map_pixels(self.get_occupancy_map())
 
         # Draw robot and sensor positions to visualization
-        robot_pos = _to_screenspace(self.__last_robot_position)
-        occupancy_map[robot_pos[0], robot_pos[1], 0] = 255
-        occupancy_map[robot_pos[0], robot_pos[1], 1] = 0
-        occupancy_map[robot_pos[0], robot_pos[1], 2] = 0
+        for robot_name in self.__robot_positions_ref:
+            # Multiple robots
+            robot_pos = _to_screenspace(self.__robot_positions_ref[robot_name])
+            occupancy_map[robot_pos[0], robot_pos[1], 0] = 255
+            occupancy_map[robot_pos[0], robot_pos[1], 1] = 0
+            occupancy_map[robot_pos[0], robot_pos[1], 2] = 0
 
-        for sensor in self.__last_sensor_positions:
-            sensor_pos = _to_screenspace(sensor)
-            occupancy_map[sensor_pos[0], sensor_pos[1], 1] = 255
-            occupancy_map[robot_pos[0], sensor_pos[1], 0] = 0
-            occupancy_map[robot_pos[0], sensor_pos[1], 2] = 0
+            # Multiple sensors per robot
+            for sensor in self.__last_sensor_positions[robot_name]:
+                sensor_pos = _to_screenspace(sensor)
+                occupancy_map[sensor_pos[0], sensor_pos[1], 1] = 255
+                occupancy_map[robot_pos[0], sensor_pos[1], 0] = 0
+                occupancy_map[robot_pos[0], sensor_pos[1], 2] = 0
 
         # Output to webots display
         image = self._display_occupancy.imageNew(

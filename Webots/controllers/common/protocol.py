@@ -24,9 +24,10 @@ class Message:
 
 
 class ScanDistanceReading(Message):
-    def __init__(self, robot_position, robot_bearing,
+    def __init__(self, robot_name, robot_position, robot_bearing,
                  arm_angle, distance_readings):
         Message.__init__(self)
+        self.robot_name = robot_name
         self.robot_position = util.filter_nans(robot_position)
         self.robot_bearing = util.filter_nan(robot_bearing)
         self.arm_angle = util.filter_nan(arm_angle)
@@ -44,6 +45,7 @@ class ScanDistanceReading(Message):
         assert json_data["type"] == cls.get_type()
 
         return cls(
+            json_data["robot_name"],
             json_data["robot_position"], json_data["robot_bearing"],
             json_data["arm_angle"], json_data["distance_readings"]
         )

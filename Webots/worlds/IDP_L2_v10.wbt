@@ -145,7 +145,6 @@ TexturedBackgroundLight {
 }
 small_or_fluffy {
   translation 0 0.1 0.39
-  enabled FALSE
 }
 small_or_fluffy {
   name "Fluffy"

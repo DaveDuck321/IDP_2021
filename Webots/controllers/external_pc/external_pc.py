@@ -19,8 +19,10 @@ class ExternalController:
     def __init__(self, emitter_channel, receiver_channel, polling_time=1):
         self.robot = Robot()
 
-        # Controller IO
+        # Current robot positions
+        self.robot_positions = {}
 
+        # Controller IO
         self.radio = Radio(
             self.robot.getDevice("emitter"),
             self.robot.getDevice("receiver")
@@ -30,6 +32,7 @@ class ExternalController:
 
         # Controller state
         self.mapping_controller = MappingController(
+            self.robot_positions,  # This is a const reference
             self.robot.getDevice("display_explored"),
             self.robot.getDevice("display_occupancy")
         )
@@ -53,8 +56,10 @@ class ExternalController:
 
     def process_message(self, message):
         if isinstance(message, protocol.ScanDistanceReading):
+            self.robot_positions[message.robot_name] = message.robot_position
+
             self.mapping_controller.update_with_scan_result(
-                message.robot_position,
+                message.robot_name,
                 message.robot_bearing,
                 message.arm_angle,
                 message.distance_readings
