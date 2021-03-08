@@ -168,7 +168,10 @@ class MappingController:
 
             fov_range = np.logical_and(
                 bearings < ULTRASOUND_ANGLE,
-                distances > 0
+                np.logical_and(
+                    distances > 0,
+                    distances < detected_distance + ULTRASOUND_NOISE
+                )
             )
             probabilities = _ultrasound_pdf(detected_distance, distances)
 
