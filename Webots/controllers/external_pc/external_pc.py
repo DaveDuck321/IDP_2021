@@ -8,9 +8,9 @@ from controller import Robot
 from common.communication import Radio
 from common import protocol
 from mapping import MappingController
-import pathfinding
+from pathfinding import PathfindingController
 
-import numpy as np
+# import numpy as np
 
 TIME_STEP = 1
 
@@ -37,22 +37,22 @@ class ExternalController:
             self.robot.getDevice("display_occupancy")
         )
 
-        self.produce_dummy_path()
+        self.pathfinding_controller = PathfindingController()
+
+        # delete me
+        self.delay_index = 0
 
     def produce_dummy_path(self):
-        arena_map = np.zeros((240, 240), dtype=np.int32)
-        arena_map[:20, :] = 1
-        arena_map[-20:, :] = 1
-        arena_map[:, :20] = 1
-        arena_map[:, -20:] = 1
-        start = (30, 30)
-        goal = (60, 180)
+        self.delay_index += 1
+        if self.delay_index == 1000:
+            arena_map = self.mapping_controller.get_clear_movement_map()
+            block_positions = ((0.5, 0.45), (0.79, 0.38), (-0.41, -0.76), (0.78, -0.44))
+            waypoints, dropoff_pos = self.pathfinding_controller.get_nearest_block_path(
+                arena_map, block_positions, self.robot_positions["Small"], "green")
 
-        waypoints = pathfinding.calculate_route(arena_map, start, goal)
-        waypoints = [(0.53, -0.44)]
-        message = protocol.WaypointList(waypoints)
+            message = protocol.WaypointList(waypoints)
 
-        self.radio.send_message(message)
+            self.radio.send_message(message)
 
     def process_message(self, message):
         if isinstance(message, protocol.ScanDistanceReading):
@@ -79,6 +79,7 @@ class ExternalController:
         # Check for robot messages, take an necessary actions
         self.process_robot_messages()
         self.mapping_controller.output_to_displays()
+        self.produce_dummy_path()
 
 
 def main():
