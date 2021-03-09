@@ -23,6 +23,28 @@ class Message:
 # ---------------------------------
 
 
+class BlockScanResult(Message):
+    def __init__(self, robot_name, block_position, is_green, is_moving_block):
+        Message.__init__(self)
+        self.robot_name = robot_name
+        self.block_position = block_position
+        self.is_green = is_green
+        self.is_moving_block = is_moving_block
+
+    @staticmethod
+    def get_type():
+        return "block_scan_result"
+
+    @classmethod
+    def build_from_JSON(cls, json_data):
+        assert json_data["type"] == cls.get_type()
+
+        return cls(
+            json_data["robot_name"], json_data["block_position"], json_data["is_green"],
+            json_data["is_moving_block"]
+        )
+
+
 class ScanDistanceReading(Message):
     def __init__(self, robot_name, robot_position, robot_bearing,
                  arm_angle, distance_readings):
@@ -76,7 +98,8 @@ class WaypointList(Message):
 
 MESSAGE_MAPPINGS = {
     ScanDistanceReading.get_type(): ScanDistanceReading,
-    WaypointList.get_type(): WaypointList
+    WaypointList.get_type(): WaypointList,
+    BlockScanResult.get_type(): BlockScanResult,
 }
 
 
