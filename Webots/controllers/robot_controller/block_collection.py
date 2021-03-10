@@ -4,7 +4,7 @@ import math
 
 class BlockCollection:
     def __init__(self, robot, drive_controller, positioning_system,
-                 pincer_controller, light, radio, IR_sensor, robot_color):
+                 pincer_controller, light, radio, IR_sensor):
         self.robot = robot
         self.drive_controller = drive_controller
         self.positioning_system = positioning_system
@@ -12,7 +12,7 @@ class BlockCollection:
         self.light = light
         self.radio = radio
         self.IR_sensor = IR_sensor
-        self.robot_color = robot_color
+        self.robot_color = self.get_robot_color()
         self.__block_pos = None
         self.__block_color = None
         self.__starting_pos = None
@@ -33,6 +33,12 @@ class BlockCollection:
 
     def __call__(self):
         return self.cur_step()
+
+    def get_robot_color(self):
+        if self.robot.getName() == "Small":
+            return "red"
+        if self.robot.getName() == "Fluffy":
+            return "green"
 
     def set_block_pos(self, block_pos, block_color=None):
         self.__block_pos = block_pos

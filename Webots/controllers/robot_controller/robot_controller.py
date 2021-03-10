@@ -160,7 +160,7 @@ class RobotController:
         if about_to_start == Tasks.BLOCK_COLLECTION:
             self.block_collection_controller = BlockCollection(
                 self.robot, self.drive_controller, self.positioning_system,
-                self.pincer_controller, self.light, self.radio, self.IR_sensor, self.robot_color)
+                self.pincer_controller, self.light, self.radio, self.IR_sensor)
 
     def switch_to_queued_task(self):
         """
