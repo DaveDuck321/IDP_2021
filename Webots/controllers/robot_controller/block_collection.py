@@ -26,7 +26,7 @@ class BlockCollection:
             self.robot.getName(),
             self.positioning_system.get_2D_position(),
             self.positioning_system.get_2D_position(),
-            self.__block_color == "green",
+            self.__block_color,
             self.block_collected
         )
         self.radio.send_message(message)
@@ -49,7 +49,7 @@ class BlockCollection:
 
     def drive_to_block(self):
         if not self.drive_controller.has_waypoints():
-            print("waiting for waypoints")
+            #print("waiting for waypoints")
             return False
 
         if self.drive_controller.navigate_waypoints(self.positioning_system):
@@ -133,7 +133,7 @@ class BlockCollection:
             self.robot.getName(),
             self.positioning_system.get_2D_position(),
             self.__block_pos,
-            self.__block_color == "green",
+            self.__block_color,
             self.block_collected
         )
         self.radio.send_message(message)

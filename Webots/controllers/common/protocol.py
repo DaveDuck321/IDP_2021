@@ -4,8 +4,9 @@ from common import util
 
 
 class Message:
-    def __init__(self):
+    def __init__(self, robot_name):
         self.type = self.get_type()
+        self.robot_name = robot_name
 
     def __repr__(self):
         return f"Type: {self.type}"
@@ -24,12 +25,11 @@ class Message:
 
 
 class BlockScanResult(Message):
-    def __init__(self, robot_name, robot_position, block_position, is_green, is_moving_block):
-        Message.__init__(self)
-        self.robot_name = robot_name
+    def __init__(self, robot_name, robot_position, block_position, color, is_moving_block):
+        Message.__init__(self, robot_name)
         self.robot_position = util.filter_nans(robot_position)
         self.block_position = block_position
-        self.is_green = is_green
+        self.color = color
         self.is_moving_block = is_moving_block
 
     @staticmethod
@@ -41,17 +41,16 @@ class BlockScanResult(Message):
         assert json_data["type"] == cls.get_type()
 
         return cls(
-            json_data["robot_name"], json_data["robot_position"],
-            json_data["block_position"], json_data["is_green"],
-            json_data["is_moving_block"]
+            json_data["robot_name"],
+            json_data["robot_position"], json_data["block_position"],
+            json_data["color"], json_data["is_moving_block"]
         )
 
 
 class ScanDistanceReading(Message):
     def __init__(self, robot_name, robot_position, robot_bearing,
                  arm_angle, distance_readings):
-        Message.__init__(self)
-        self.robot_name = robot_name
+        Message.__init__(self, robot_name)
         self.robot_position = util.filter_nans(robot_position)
         self.robot_bearing = util.filter_nan(robot_bearing)
         self.arm_angle = util.filter_nan(arm_angle)
@@ -80,8 +79,8 @@ class ScanDistanceReading(Message):
 
 
 class WaypointList(Message):
-    def __init__(self, waypoints):
-        Message.__init__(self)
+    def __init__(self, robot_target, waypoints):
+        Message.__init__(self, robot_target)
         self.waypoints = waypoints
 
     def __repr__(self):
@@ -95,7 +94,7 @@ class WaypointList(Message):
     def build_from_JSON(cls, json_data):
         assert json_data["type"] == cls.get_type()
 
-        return cls(json_data["waypoints"])
+        return cls(json_data["robot_name"], json_data["waypoints"])
 
 
 MESSAGE_MAPPINGS = {

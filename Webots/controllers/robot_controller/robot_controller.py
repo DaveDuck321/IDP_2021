@@ -132,7 +132,10 @@ class RobotController:
             Receive and process all instructions on the current channel.
         """
         for message in self.radio.get_messages():
-            self.process_message(message)
+            # Ensure this is robot the correct recipient
+            print("Received message", message.robot_name)
+            if message.robot_name == self.robot.getName():
+                self.process_message(message)
 
     def __clean_current_task(self, about_to_end, about_to_start):
         """

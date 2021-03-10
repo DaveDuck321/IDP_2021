@@ -39,21 +39,6 @@ class ExternalController:
 
         self.pathfinding_controller = PathfindingController()
 
-        # delete me
-        self.delay_index = 0
-
-    def produce_dummy_path(self):
-        self.delay_index += 1
-        if self.delay_index == 1000:
-            arena_map = self.mapping_controller.get_clear_movement_map()
-            block_positions = ((0.5, 0.45), (0.79, 0.38), (-0.41, -0.76), (0.78, -0.44))
-            waypoints, dropoff_pos = self.pathfinding_controller.get_nearest_block_path(
-                arena_map, block_positions, self.robot_positions["Small"], "green")
-
-            message = protocol.WaypointList(waypoints)
-
-            self.radio.send_message(message)
-
     def process_message(self, message):
         if isinstance(message, protocol.ScanDistanceReading):
             self.robot_positions[message.robot_name] = message.robot_position
@@ -65,23 +50,26 @@ class ExternalController:
                 message.distance_readings
             )
         elif isinstance(message, protocol.BlockScanResult):
-            if message.is_moving_block:
-                arena_map = self.mapping_controller.get_clear_movement_map()
-                robot_pos = message.robot_position
-                robot_name = message.robot_name
-                waypoint_path, block_release_pos = self.pathfinding_controller.get_dropoff_path(
-                    arena_map, robot_pos, robot_name)
-            else:
-                arena_map = self.mapping_controller.get_clear_movement_map()
-                block_positions = ((0.5, 0.45), (0.79, 0.38), (-0.41, -0.76), (0.78, -0.44))
-                robot_pos = message.robot_position
-                robot_name = message.robot_name
-                waypoint_path, block_release_pos = self.pathfinding_controller.get_nearest_block_path(
-                    arena_map, block_positions, robot_pos, robot_name)
+            arena_map = self.mapping_controller.get_clear_movement_map()
+            robot_name, robot_pos = message.robot_name, message.robot_position
 
-            print(waypoint_path)
-            print(block_release_pos)
-            message = protocol.WaypointList(waypoint_path + [block_release_pos])
+            if message.is_moving_block:
+                waypoint_path, block_release_pos = \
+                    self.pathfinding_controller.get_dropoff_path(
+                        arena_map, robot_pos, robot_name
+                    )
+            else:
+                self.mapping_controller.update_with_color_reading(message.block_position, message.color)
+
+                cluster_position = self.mapping_controller.predict_block_locations()
+
+                waypoint_path, block_release_pos = \
+                    self.pathfinding_controller.get_nearest_block_path(
+                        robot_name, arena_map,
+                        cluster_position, robot_pos
+                    )
+
+            message = protocol.WaypointList(robot_name, waypoint_path + [block_release_pos])
             self.radio.send_message(message)
         else:
             raise NotImplementedError()

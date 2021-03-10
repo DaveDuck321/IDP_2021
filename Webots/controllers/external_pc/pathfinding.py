@@ -2,21 +2,40 @@ from common import util
 
 import numpy as np
 from queue import PriorityQueue
+from collections import defaultdict
+
+
+def dilate(grid, iterations):
+    """
+        Create buffer area around obstacles to avoid robot collision.
+    """
+    grid = grid.copy()
+    for i in range(iterations):
+        grid[:-1, :] = grid[1:, :] | grid[:-1, :]
+        grid[:, :-1] = grid[:, 1:] | grid[:, :-1]
+        grid[1:, :] = grid[:-1, :] | grid[1:, :]
+        grid[:, 1:] = grid[:, :-1] | grid[:, 1:]
+
+    return grid
 
 
 class PathfindingController:
     def __init__(self, arena_shape=(240, 240)):
-        self.green_dropoff = [(-0.08, -0.47), (-0.03, -0.47), (0.03, -0.47), (0.08, -0.47)]
-        self.red_dropoff = [(-0.16, 0.25), (-0.06, 0.25), (0.04, 0.25), (0.14, 0.25)]
 
-        self.green_spawn = (0.0, -0.3)
-        self.red_spawn = (0.0, 0.3)
+        self.robots_spawn = {
+            "Fluffy": (0.0, -0.3),
+            "Small": (0.0, 0.3),
+        }
+        self.dropoff_locations = {
+            "Fluffy": [(-0.08, -0.47), (-0.03, -0.47), (0.03, -0.47), (0.08, -0.47)],
+            "Small": [(-0.16, 0.25), (-0.06, 0.25), (0.04, 0.25), (0.14, 0.25)],
+        }
 
-        self.num_green_returned = 0
-        self.num_red_returned = 0
+        self.number_returned = defaultdict(int)
 
-        self.green_path_mask = np.zeros(arena_shape, dtype=np.bool)
-        self.red_path_mask = np.zeros(arena_shape, dtype=np.bool)
+        self.path_masks = {}
+        # self.green_path_mask = np.zeros(arena_shape, dtype=np.bool)
+        # self.red_path_mask = np.zeros(arena_shape, dtype=np.bool)
         self.dropoff_mask = np.zeros(arena_shape, dtype=np.bool)
 
         self.arena_shape = arena_shape
@@ -31,19 +50,6 @@ class PathfindingController:
                   int(coords[1] * 100.0 + 0.5 + self.arena_shape[1] / 2.0))
         return coords
 
-    def dilate(self, grid, iterations):
-        """
-            Create buffer area around obstacles to avoid robot collision.
-        """
-        grid = grid.copy()
-        for i in range(iterations):
-            grid[:-1, :] = grid[1:, :] | grid[:-1, :]
-            grid[:, :-1] = grid[:, 1:] | grid[:, :-1]
-            grid[1:, :] = grid[:-1, :] | grid[1:, :]
-            grid[:, 1:] = grid[:, :-1] | grid[:, 1:]
-
-        return grid
-
     def mask_delivered_blocks(self, arena_map):
         """
             Returns mask of starting area based on number of blocks delivered
@@ -52,7 +58,7 @@ class PathfindingController:
 
         return delivered_blocks_mask
 
-    def calculate_route(self, arena_map, mask_path, start, goal):
+    def calculate_route(self, robot_name, arena_map, start, goal):
         """
             Uses A* algorithm and knowledge of current path of other robot, along with obstacles
             in arena to avoid collisions and find shortest path and convert that into a list of
@@ -72,7 +78,7 @@ class PathfindingController:
 
         # create a bool map, where an obstacle is True and free space is False
         arena_map = np.invert(arena_map)
-        arena_map = arena_map | self.dilate(arena_map, 10)
+        arena_map = arena_map | dilate(arena_map, 10)
 
         # remove the area around the current target location, to eliminate the block to pick
         # up from the mask of areas not to be traversed
@@ -80,7 +86,12 @@ class PathfindingController:
                   max(0, goal[1] - 10): min(arena_map.shape[1] - 1, goal[1] + 10)] = False
 
         # add the paths of the other robot to the "Do Not Travel" areas
-        arena_map = arena_map | self.dilate(mask_path, 15)
+        for robot_name in self.path_masks:
+            # Dilate all other robot paths
+            if robot_name == robot_name:
+                continue
+
+            arena_map = arena_map | dilate(self.path_masks[robot_name], 15)
 
         # add the locations of already delivered blocks to the "Do Not Travel" areas
         arena_map = arena_map | self.mask_delivered_blocks(arena_map)
@@ -141,7 +152,7 @@ class PathfindingController:
 
         return distances[goal], waypoints, release_pos, path_mask.copy()
 
-    def get_nearest_block_path(self, arena_map, block_positions, robot_pos, robot_name):
+    def get_nearest_block_path(self, robot_name, arena_map, clusters, robot_pos):
         """
             Finds paths for each known block from current robot and returns path to nearest, together with location
             for BlockCollection
@@ -152,26 +163,27 @@ class PathfindingController:
         arena_map_with_border = np.ones(self.arena_shape, dtype=np.bool)
         arena_map_with_border[1:-1, 1:-1] = arena_map
 
-        shortest_path = float('inf')
+        shortest_path = np.inf
         waypoint_path = []
         block_release_pos = None
         path_mask = np.zeros((self.arena_shape), dtype=np.bool)
-        for block_pos in block_positions:
-            block_pos_matrix = self.world_to_grid_coords(block_pos)
-            if robot_name == "Fluffy":
-                dist, waypoints, release_pos, path_mask = self.calculate_route(
-                    arena_map_with_border, self.red_path_mask, robot_pos_matrix, block_pos_matrix)
-            elif robot_name == "Small":
-                dist, waypoints, release_pos, path_mask = self.calculate_route(
-                    arena_map_with_border, self.green_path_mask, robot_pos_matrix, block_pos_matrix)
+        for cluster in clusters:
+            # Filter out blocks of an incorrect color
+            if cluster.color is not None and cluster.color != robot_name:
+                continue
+
+            block_pos_matrix = self.world_to_grid_coords(cluster.coord)
+
+            # Calculate the route for this block
+            dist, waypoints, release_pos, path_mask = self.calculate_route(
+                robot_name, arena_map_with_border, robot_pos_matrix, block_pos_matrix
+            )
+
             if dist < shortest_path:
                 shortest_path = dist
                 waypoint_path = waypoints
                 block_release_pos = release_pos
-                if robot_name == "Fluffy":
-                    self.green_path_mask = path_mask
-                elif robot_name == "Small":
-                    self.red_path_mask = path_mask
+                self.path_masks[robot_name] = path_mask
 
         return waypoint_path[::-1], block_release_pos
 
@@ -181,7 +193,6 @@ class PathfindingController:
             location for BlockCollection release.
         """
         print("calculating path back to base")
-        robot_pos_matrix = self.world_to_grid_coords(robot_pos)
         arena_map_with_border = np.ones(self.arena_shape, dtype=np.bool)
         arena_map_with_border[1:-1, 1:-1] = arena_map
 
@@ -189,18 +200,13 @@ class PathfindingController:
         block_release_pos = None
         path_mask = np.zeros((self.arena_shape), dtype=np.bool)
 
-        if robot_name == "Fluffy":
-            green_spawn_matrix = self.world_to_grid_coords(self.green_spawn)
-            dist, waypoints, block_release_pos, path_mask = self.calculate_route(
-                arena_map_with_border, self.red_path_mask, robot_pos_matrix, green_spawn_matrix)
-            waypoints = waypoints[::-1] + [self.green_spawn]
-            block_release_pos = self.green_dropoff[self.num_green_returned]
+        robot_grid_coords = self.world_to_grid_coords(robot_pos)
+        spawn_grid_coords = self.world_to_grid_coords(self.robots_spawn[robot_name])
 
-        elif robot_name == "Small":
-            red_spawn_matrix = self.world_to_grid_coords(self.red_spawn)
-            dist, waypoints, block_release_pos, path_mask = self.calculate_route(
-                arena_map_with_border, self.green_path_mask, robot_pos_matrix, red_spawn_matrix)
-            waypoints = waypoints[::-1] + [self.red_spawn]
-            block_release_pos = self.red_dropoff[self.num_red_returned]
+        dist, waypoints, block_release_pos, path_mask = self.calculate_route(
+            robot_name, arena_map_with_border, robot_grid_coords, spawn_grid_coords
+        )
+        waypoints = waypoints[::-1] + [self.robots_spawn[robot_name]]
+        block_release_pos = self.dropoff_locations[robot_name][self.number_returned[robot_name]]
 
         return waypoints, block_release_pos
