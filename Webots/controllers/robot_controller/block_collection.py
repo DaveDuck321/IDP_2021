@@ -49,7 +49,7 @@ class BlockCollection:
 
     def drive_to_block(self):
         if not self.drive_controller.has_waypoints():
-            #print("waiting for waypoints")
+            # print("waiting for waypoints")
             return False
 
         if self.drive_controller.navigate_waypoints(self.positioning_system):
@@ -58,7 +58,7 @@ class BlockCollection:
 
     def face_block(self):
         if self.__block_pos is None:
-            print("waiting for block_pos")
+            # print("waiting for block_pos")
             return False
         if self.drive_controller.turn_toward_point(self.positioning_system, self.__block_pos):
             self.__starting_pos = self.positioning_system.get_2D_position()
@@ -71,7 +71,7 @@ class BlockCollection:
             self.drive_controller.set_waypoints([self.__block_pos])
             self.cur_step = self.drive_over_block
             print("drive over block")
-        elif IR_dist is not None and IR_dist >= 0.0001:
+        elif IR_dist is not None and IR_dist >= 0.2:
             self.target_bearing = (self.positioning_system.get_world_bearing() + math.pi / 6.0) % (2 * math.pi)
             self.min_IR_dist = (IR_dist, self.positioning_system.get_world_bearing())
             self.cur_step = self.IR_search_setup
@@ -87,15 +87,15 @@ class BlockCollection:
         return False
 
     def IR_search(self):
-        IR_dist = IR_dist = self.IR_sensor.get_distance()
+        IR_dist = self.IR_sensor.get_distance()
         if IR_dist is not None and IR_dist < self.min_IR_dist[0]:
             self.min_IR_dist = (IR_dist, self.positioning_system.get_world_bearing())
 
         if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.target_bearing):
             self.__block_pos[0] = self.positioning_system.get_2D_position(
-            )[0] + (self.min_IR_dist[0] - 0.08) * math.cos(self.min_IR_dist[1])
+            )[0] + (self.min_IR_dist[0] - 0.1) * math.cos(self.min_IR_dist[1])
             self.__block_pos[1] = self.positioning_system.get_2D_position(
-            )[1] + (self.min_IR_dist[0] - 0.08) * math.sin(self.min_IR_dist[1])
+            )[1] + (self.min_IR_dist[0] - 0.1) * math.sin(self.min_IR_dist[1])
             self.drive_controller.set_waypoints([self.__block_pos])
             print(self.positioning_system.get_2D_position())
             print(self.__block_pos)

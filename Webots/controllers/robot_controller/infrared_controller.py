@@ -15,7 +15,7 @@ class IRSensor:
         lookup_table_dists_pairs = zip(lookup_table_dists, lookup_table_dists[1:])
         self.lookup_table_vals_pairs = zip(lookup_table_vals, lookup_table_vals[1:])
 
-        self.pairs = zip(self.lookup_table_vals_pairs, lookup_table_dists_pairs)
+        self.pairs = list(zip(self.lookup_table_vals_pairs, lookup_table_dists_pairs))
 
     def get_distance(self):
         """

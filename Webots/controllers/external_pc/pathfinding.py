@@ -141,7 +141,7 @@ class PathfindingController:
             cur_z -= walks[direction][1]
 
             goal_dist = distances[goal] - distances[cur_x, cur_z]
-            if 2 < goal_dist < 4:
+            if 4 < goal_dist < 6:
                 release_pos = self.grid_to_world_coord((cur_x, cur_z))
             if 15.0 < goal_dist < 17:
                 waypoints = [self.grid_to_world_coord((cur_x, cur_z))]
