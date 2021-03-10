@@ -3,7 +3,8 @@ import math
 
 
 class BlockCollection:
-    def __init__(self, robot, drive_controller, positioning_system, pincer_controller, light, radio, IR_sensor, robot_color):
+    def __init__(self, robot, drive_controller, positioning_system,
+                 pincer_controller, light, radio, IR_sensor, robot_color):
         self.robot = robot
         self.drive_controller = drive_controller
         self.positioning_system = positioning_system
@@ -60,7 +61,7 @@ class BlockCollection:
 
     def inspect_block(self):
         IR_dist = self.IR_sensor.get_distance()
-        if IR_dist is not None and True:    # IR_dist < 0.3:
+        if IR_dist is not None and IR_dist < 0.2:
             self.drive_controller.set_waypoints([self.__block_pos])
             self.cur_step = self.drive_over_block
             print("drive over block")
@@ -86,9 +87,9 @@ class BlockCollection:
 
         if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.target_bearing):
             self.__block_pos[0] = self.positioning_system.get_2D_position(
-            )[0] + (self.min_IR_dist[0] - 0.06) * math.cos(self.min_IR_dist[1])
+            )[0] + (self.min_IR_dist[0] - 0.08) * math.cos(self.min_IR_dist[1])
             self.__block_pos[1] = self.positioning_system.get_2D_position(
-            )[1] + (self.min_IR_dist[0] - 0.06) * math.sin(self.min_IR_dist[1])
+            )[1] + (self.min_IR_dist[0] - 0.08) * math.sin(self.min_IR_dist[1])
             self.drive_controller.set_waypoints([self.__block_pos])
             print(self.positioning_system.get_2D_position())
             print(self.__block_pos)
@@ -130,9 +131,7 @@ class BlockCollection:
             self.block_collected
         )
         self.radio.send_message(message)
-
         self.cur_step = lambda: self.wait_for_pincer(self.reverse_away)
-        self.drive_controller.set_waypoints([self.__starting_pos])
         return False
 
     def wait_for_pincer(self, next_func):
@@ -144,6 +143,7 @@ class BlockCollection:
         return False
 
     def reverse_away(self):
+        self.drive_controller.set_waypoints([self.__starting_pos])
         if self.drive_controller.navigate_waypoints(self.positioning_system, reverse=True):
             if self.block_collected:
                 self.cur_step = self.return_to_base
