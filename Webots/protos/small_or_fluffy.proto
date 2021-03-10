@@ -133,7 +133,7 @@ children [
         }
         }
         Solid {
-        translation 0.075 -0.0425 0
+        translation 0.075 -0.0625 0
         children [
             DEF gg_im_tired Group {
             children [
@@ -146,23 +146,23 @@ children [
                 }
                 }
                 Transform {
-                translation 0 0.0205 0.0495
+                translation 0 0.0305 0.0495
                 children [
                     Shape {
                     appearance USE grabber_support
                     geometry Box {
-                        size 0.02 0.04 0.001
+                        size 0.02 0.06 0.001
                     }
                     }
                 ]
                 }
                 Transform {
-                translation 0 0.0205 -0.0495
+                translation 0 0.0305 -0.0495
                 children [
                     Shape {
                     appearance USE grabber_support
                     geometry Box {
-                        size 0.02 0.04 0.001
+                        size 0.02 0.06 0.001
                     }
                     }
                 ]
@@ -541,6 +541,7 @@ children [
         rotation -5.516944845235342e-07 -0.9999999997642423 -2.170739709167527e-05 0.00043847225342539555
         children [
         Solid {
+            translation 0 -0.01 0
             children [
             DEF right_grabber Group {
                 children [
@@ -550,11 +551,11 @@ children [
                     metalness 0
                     }
                     geometry Box {
-                    size 0.1 0.04 0.003
+                    size 0.1 0.06 0.003
                     }
                 }
                 Transform {
-                    translation 0.047 -0.0185 -0.0065
+                    translation 0.047 -0.0285 -0.0065
                     children [
                     Shape {
                         appearance USE grabber_app
@@ -594,9 +595,10 @@ children [
     ]
     endPoint Solid {
         translation 0.1 -0.0220003 -0.027
-        rotation 5.661464209183858e-07 0.9999999997636551 -2.173406469475779e-05 0.00043788385743683716
+        rotation 5.661464209183857e-07 0.9999999997636548 -2.1734064694757783e-05 0.00043788385743683716
         children [
         Solid {
+            translation 0 -0.01 0
             children [
             DEF left_grabber Group {
                 children [
@@ -606,11 +608,11 @@ children [
                     metalness 0
                     }
                     geometry Box {
-                    size 0.1 0.04 0.003
+                    size 0.1 0.06 0.003
                     }
                 }
                 Transform {
-                    translation 0.047 -0.0185 0.0065
+                    translation 0.047 -0.0285 0.0065
                     children [
                     Shape {
                         appearance USE grabber_app
@@ -645,4 +647,5 @@ name IS name
 controller "robot_controller"
 %{ end }%
 }
+
 }
