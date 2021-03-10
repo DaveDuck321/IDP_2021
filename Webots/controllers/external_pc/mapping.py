@@ -406,7 +406,7 @@ class MappingController:
             # Multiple sensors per robot
             for sensor in self.__last_sensor_positions[robot_name]:
                 sensor_pos = _to_screenspace(sensor)
-                occupancy_map[robot_pos[0], sensor_pos[1], :] = (0, 255, 0)
+                occupancy_map[sensor_pos[0], sensor_pos[1], :] = (0, 255, 0)
 
         # Output to webots display
         image = self._display_occupancy.imageNew(
