@@ -36,6 +36,13 @@ def get_bearing(p1, p2):
     return math.atan2(p1[1] - p2[1], p1[0] - p2[0])
 
 
+def tuple_in_bound(p1, bounds):
+    """
+        Returns true if a numpy array of shape (bounds) could be indexed by the tuple.
+    """
+    return p1[0] >= 0 and p1[1] >= 0 and p1[0] < bounds[0] and p1[1] < bounds[1]
+
+
 def normalize_radian(phase):
     """
         Normalizes a phase radian between +/- pi.
