@@ -68,16 +68,16 @@ class ExternalController:
             if message.is_moving_block:
                 arena_map = self.mapping_controller.get_clear_movement_map()
                 robot_pos = message.robot_position
-                robot_color = "green"
+                robot_name = message.robot_name
                 waypoint_path, block_release_pos = self.pathfinding_controller.get_dropoff_path(
-                    arena_map, robot_pos, robot_color)
+                    arena_map, robot_pos, robot_name)
             else:
                 arena_map = self.mapping_controller.get_clear_movement_map()
                 block_positions = ((0.5, 0.45), (0.79, 0.38), (-0.41, -0.76), (0.78, -0.44))
                 robot_pos = message.robot_position
-                robot_color = "green"
+                robot_name = message.robot_name
                 waypoint_path, block_release_pos = self.pathfinding_controller.get_nearest_block_path(
-                    arena_map, block_positions, robot_pos, robot_color)
+                    arena_map, block_positions, robot_pos, robot_name)
 
             print(waypoint_path)
             print(block_release_pos)
