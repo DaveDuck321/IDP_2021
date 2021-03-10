@@ -41,6 +41,7 @@ class PositioningSystem:
         """
             Moves the turret motor to the specified angle.
         """
+        angle = min(max(0, angle), math.pi)
         self._turret_motor.setPosition(angle)
         self.__turret_target_angle = angle
 

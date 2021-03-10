@@ -10,6 +10,8 @@ from positioning_systems import PositioningSystem
 from pincer_controller import PincerController
 from ultrasonic_emulator import RealUltrasonic
 from block_collection import BlockCollection
+from scanning import ServoArmController
+from infrared_controller import IRSensor
 
 from common.communication import Radio
 from common import protocol
@@ -32,9 +34,9 @@ class RobotController:
     def __init__(self, sensor_polling=5):
         self.robot = Robot()
         self.current_task = Tasks.NONE
-        self.queued_task = Tasks.NONE
+        self.queued_task = Tasks.STATIONARY_SCAN
 
-        self.robot_color = "red"
+        self.robot_color = "green"
 
         # Setup radio for communication with external controller
         self.radio = Radio(
@@ -65,9 +67,13 @@ class RobotController:
             self.robot.getDevice("drive_motor_2")
         )
 
+        self.scanning_controller = ServoArmController()
+
         # Enable light sensor
         self.light = self.robot.getDevice("light_sensor")
         self.light.enable(sensor_polling)
+
+        self.IR_sensor = IRSensor(self.robot.getDevice("IR sensor"), sensor_polling)
 
         # Start with the pincer fully open
         self.pincer_controller.open_pincer()
@@ -113,7 +119,11 @@ class RobotController:
             Take action on the received message.
         """
         if isinstance(message, protocol.WaypointList):
-            self.drive_controller.set_waypoints(message.waypoints)
+            if self.current_task == Tasks.BLOCK_COLLECTION:
+                self.drive_controller.set_waypoints(message.waypoints[:-1])
+                self.block_collection_controller.set_block_pos(message.waypoints[-1])
+            elif self.current_task == Tasks.NAVIGATE_TO_WAYPOINT:
+                self.drive_controller.set_waypoints(message.waypoints)
         else:
             raise NotImplementedError()
 
@@ -149,7 +159,8 @@ class RobotController:
             self.pincer_controller.close_pincer()
         if about_to_start == Tasks.BLOCK_COLLECTION:
             self.block_collection_controller = BlockCollection(
-                self.drive_controller, self.positioning_system, self.pincer_controller, self.light, self.robot_color)
+                self.robot, self.drive_controller, self.positioning_system,
+                self.pincer_controller, self.light, self.radio, self.IR_sensor, self.robot_color)
 
     def switch_to_queued_task(self):
         """
@@ -175,11 +186,15 @@ class RobotController:
             if self.drive_controller.navigate_waypoints(self.positioning_system, reverse=True):
                 # Reached final waypoint! Change to grabbing state
                 self.queued_task = Tasks.BLOCK_COLLECTION
+
         elif self.current_task == Tasks.STATIONARY_SCAN:
-            pass
+            if self.scanning_controller.stationary_scan(self.positioning_system):
+                self.queued_task = Tasks.BLOCK_COLLECTION
+
         elif self.current_task == Tasks.BLOCK_COLLECTION:
             if self.block_collection_controller():
-                self.queued_task = Tasks.NAVIGATE_TO_WAYPOINT
+                self.queued_task = Tasks.STATIONARY_SCAN
+
         elif self.current_task == Tasks.NONE:
             pass  # TODO: maybe query controller here
         else:
@@ -187,7 +202,8 @@ class RobotController:
             raise NotImplementedError()
 
         # Demonstrate the mapping for moving turret
-        self.positioning_system.spin_turret(0.01)
+        if self.current_task != Tasks.STATIONARY_SCAN:
+            self.scanning_controller.driving_scan(self.positioning_system)
 
         # Tick finished, switch tasks if necessary
         self.switch_to_queued_task()

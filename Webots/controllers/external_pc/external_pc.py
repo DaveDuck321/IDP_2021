@@ -64,6 +64,25 @@ class ExternalController:
                 message.arm_angle,
                 message.distance_readings
             )
+        elif isinstance(message, protocol.BlockScanResult):
+            if message.is_moving_block:
+                arena_map = self.mapping_controller.get_clear_movement_map()
+                robot_pos = message.robot_position
+                robot_color = "green"
+                waypoint_path, block_release_pos = self.pathfinding_controller.get_dropoff_path(
+                    arena_map, robot_pos, robot_color)
+            else:
+                arena_map = self.mapping_controller.get_clear_movement_map()
+                block_positions = ((0.5, 0.45), (0.79, 0.38), (-0.41, -0.76), (0.78, -0.44))
+                robot_pos = message.robot_position
+                robot_color = "green"
+                waypoint_path, block_release_pos = self.pathfinding_controller.get_nearest_block_path(
+                    arena_map, block_positions, robot_pos, robot_color)
+
+            print(waypoint_path)
+            print(block_release_pos)
+            message = protocol.WaypointList(waypoint_path + [block_release_pos])
+            self.radio.send_message(message)
         else:
             raise NotImplementedError()
 
@@ -79,7 +98,6 @@ class ExternalController:
         # Check for robot messages, take an necessary actions
         self.process_robot_messages()
         self.mapping_controller.output_to_displays()
-        self.produce_dummy_path()
 
 
 def main():

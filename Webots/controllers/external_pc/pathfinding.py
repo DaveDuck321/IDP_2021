@@ -6,15 +6,18 @@ from queue import PriorityQueue
 
 class PathfindingController:
     def __init__(self, arena_shape=(240, 240)):
-        self.green_dropoff = [(-0.16, -0.56), (-0.06, -0.56), (0.04, -0.56), (0.14, -0.56)]
+        self.green_dropoff = [(-0.08, -0.47), (-0.03, -0.47), (0.03, -0.47), (0.08, -0.47)]
         self.red_dropoff = [(-0.16, 0.25), (-0.06, 0.25), (0.04, 0.25), (0.14, 0.25)]
+
+        self.green_spawn = (0.0, -0.3)
+        self.red_spawn = (0.0, 0.3)
 
         self.num_green_returned = 0
         self.num_red_returned = 0
 
-        self.green_path_mask = np.zeros(arena_shape, dtype=np.int32)
-        self.red_path_mask = np.zeros(arena_shape, dtype=np.int32)
-        self.dropoff_mask = np.zeros(arena_shape, dtype=np.int32)
+        self.green_path_mask = np.zeros(arena_shape, dtype=np.bool)
+        self.red_path_mask = np.zeros(arena_shape, dtype=np.bool)
+        self.dropoff_mask = np.zeros(arena_shape, dtype=np.bool)
 
     def dilate(self, grid, iterations):
         """
@@ -22,20 +25,19 @@ class PathfindingController:
         """
         grid = grid.copy()
         for i in range(iterations):
-            grid[:-1, :] += grid[1:, :]
-            grid[:, :-1] += grid[:, 1:]
-            grid[1:, :] += grid[:-1, :]
-            grid[:, 1:] += grid[:, :-1]
+            grid[:-1, :] = grid[1:, :] | grid[:-1, :]
+            grid[:, :-1] = grid[:, 1:] | grid[:, :-1]
+            grid[1:, :] = grid[:-1, :] | grid[1:, :]
+            grid[:, 1:] = grid[:, :-1] | grid[:, 1:]
 
-        grid[grid > 1] = 1
         return grid
 
     def mask_delivered_blocks(self, arena_map):
         """
             Returns mask of starting area based on number of blocks delivered
         """
-        delivered_blocks_mask = np.zeros((arena_map.shape), dtype=np.int32)
-        # TODO use self.num_green/red_returned to mask of part of starting area
+        delivered_blocks_mask = np.zeros((arena_map.shape), dtype=np.bool)
+
         return delivered_blocks_mask
 
     def calculate_route(self, arena_map, mask_path, start, goal):
@@ -48,15 +50,17 @@ class PathfindingController:
                  (-1, 0, 1), (-1, -1, 2**0.5), (0, -1, 1), (1, -1, 2**0.5))
         distances = -np.ones((arena_map.shape), dtype=np.float64)
         directions = -np.ones((arena_map.shape), dtype=np.int32)
-        path_mask = np.zeros((arena_map.shape), dtype=np.int32)
+        path_mask = np.zeros((arena_map.shape), dtype=np.bool)
         distances[start] = 0
         to_explore = PriorityQueue()
         to_explore.put((0, start))
 
-        arena_map = self.dilate(arena_map, 10)
-        arena_map += self.dilate(mask_path, 15)
-        arena_map += self.mask_delivered_blocks(arena_map)
-        arena_map[arena_map > 1] = 1
+        arena_map = np.invert(arena_map)
+        arena_map = arena_map | self.dilate(arena_map, 10)
+        arena_map = arena_map | self.dilate(mask_path, 15)
+        arena_map = arena_map | self.mask_delivered_blocks(arena_map)
+
+        arena_map[max(0, goal[0] - 10):min(239, goal[0] + 10), max(0, goal[1] - 10):min(239, goal[1] + 10)] = False
 
         while not to_explore.empty():
             _, (cur_x, cur_z) = to_explore.get()
@@ -64,7 +68,7 @@ class PathfindingController:
                 break
             for direction, (x, z, dist) in enumerate(walks):
                 # check if movement is in map and free to move into
-                if not (0 <= cur_x + x < 240 and 0 <= cur_z + z < 240 and arena_map[cur_x + x, cur_z + z] != 1):
+                if not (0 <= cur_x + x < 240 and 0 <= cur_z + z < 240 and not arena_map[cur_x + x, cur_z + z]):
                     continue  # Movement is outside of map
 
                 # if already processed and too expensive, skip reevaluation
@@ -92,9 +96,9 @@ class PathfindingController:
             cur_z -= walks[direction][1]
 
             goal_dist = distances[goal] - distances[cur_x, cur_z]
-            if 10.25 < goal_dist < 11.32:
-                release_pos = (cur_x, cur_z)
-            if 15.0 < goal_dist < 16.06:
+            if 2 < goal_dist < 4:
+                release_pos = ((cur_x - 120.0) / 100.0, (cur_z - 120.0) / 100.0)
+            if 15.0 < goal_dist < 17:
                 waypoints = [((cur_x - 120.0) / 100.0, (cur_z - 120.0) / 100.0)]
             path_mask[cur_x, cur_z] = 1
             if directions[cur_x, cur_z] != direction:
@@ -111,17 +115,17 @@ class PathfindingController:
             Finds paths for each known block from current robot and returns path to nearest, together with location
             for BlockCollection
         """
+        print("calculating path to nearest block")
         robot_x_pos = int(robot_pos[0] * 100.0 + 0.5) + 120
         robot_y_pos = int(robot_pos[1] * 100.0 + 0.5) + 120
         robot_pos_matrix = (robot_x_pos, robot_y_pos)
-        arena_map_with_border = np.ones((240, 240), dtype=np.int32)
-        arena_map_int = arena_map.astype('int32')
-        arena_map_with_border[1:-1, 1:-1] = arena_map_int
+        arena_map_with_border = np.ones((240, 240), dtype=np.bool)
+        arena_map_with_border[1:-1, 1:-1] = arena_map
 
         shortest_path = float('inf')
         waypoint_path = []
         block_release_pos = None
-        path_mask = np.zeros((arena_map.shape), dtype=np.int32)
+        path_mask = np.zeros((arena_map.shape), dtype=np.bool)
         for block_pos in block_positions:
             block_pos_matrix = (int(block_pos[0] * 100.0 + 0.5) + 120, int(block_pos[1] * 100.0 + 0.5) + 120)
             if robot_color == "green":
@@ -139,35 +143,37 @@ class PathfindingController:
                 elif robot_color == "red":
                     self.red_path_mask = path_mask
 
-        return waypoint_path, block_release_pos
+        return waypoint_path[::-1], block_release_pos
 
     def get_dropoff_path(self, arena_map, robot_pos, robot_color):
         """
             Returns a list of tuples (x, z) in world coordinate system for robot path back to base, together with
             location for BlockCollection release.
         """
+        print("calculating path back to base")
         robot_x_pos = int(robot_pos[0] * 100.0 + 0.5) + 120
         robot_y_pos = int(robot_pos[1] * 100.0 + 0.5) + 120
         robot_pos_matrix = (robot_x_pos, robot_y_pos)
-        arena_map_with_border = np.ones((240, 240), dtype=np.int32)
-        arena_map_int = arena_map.astype('int32')
-        arena_map_with_border[1:-1, 1:-1] = arena_map_int
+        arena_map_with_border = np.ones((240, 240), dtype=np.bool)
+        arena_map_with_border[1:-1, 1:-1] = arena_map
 
         waypoints = []
         block_release_pos = None
-        path_mask = np.zeros((arena_map.shape), dtype=np.int32)
+        path_mask = np.zeros((arena_map.shape), dtype=np.bool)
 
         if robot_color == "green":
-            block_pos_matrix = (
-                int(self.green_dropoff[self.num_green_returned][0] * 100.0 + 0.5) + 120,
-                int(self.green_dropoff[self.num_green_returned][1] * 100.0 + 0.5) + 120)
+            green_spawn_matrix = (int(self.green_spawn[0] * 100.0 + 0.5) + 120,
+                                  int(self.green_spawn[1] * 100.0 + 0.5) + 120)
             dist, waypoints, block_release_pos, path_mask = self.calculate_route(
-                arena_map_with_border, self.red_path_mask, robot_pos_matrix, block_pos_matrix)
+                arena_map_with_border, self.red_path_mask, robot_pos_matrix, green_spawn_matrix)
+            waypoints = waypoints[::-1] + [self.green_spawn]
+            block_release_pos = self.green_dropoff[self.num_green_returned]
+
         elif robot_color == "red":
-            block_pos_matrix = (
-                int(self.red_dropoff[self.num_red_returned][0] * 100.0 + 0.5) + 120,
-                int(self.red_dropoff[self.num_red_returned][1] * 100.0 + 0.5) + 120)
+            red_spawn_matrix = (int(self.red_spawn[0] * 100.0 + 0.5) + 120, int(self.red_spawn[1] * 100.0 + 0.5) + 120)
             dist, waypoints, block_release_pos, path_mask = self.calculate_route(
-                arena_map_with_border, self.green_path_mask, robot_pos_matrix, block_pos_matrix)
+                arena_map_with_border, self.green_path_mask, robot_pos_matrix, red_spawn_matrix)
+            waypoints = waypoints[::-1] + [self.red_spawn]
+            block_release_pos = self.red_dropoff[self.num_red_returned]
 
         return waypoints, block_release_pos

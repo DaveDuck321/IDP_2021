@@ -24,9 +24,10 @@ class Message:
 
 
 class BlockScanResult(Message):
-    def __init__(self, robot_name, block_position, is_green, is_moving_block):
+    def __init__(self, robot_name, robot_position, block_position, is_green, is_moving_block):
         Message.__init__(self)
         self.robot_name = robot_name
+        self.robot_position = util.filter_nans(robot_position)
         self.block_position = block_position
         self.is_green = is_green
         self.is_moving_block = is_moving_block
@@ -40,7 +41,8 @@ class BlockScanResult(Message):
         assert json_data["type"] == cls.get_type()
 
         return cls(
-            json_data["robot_name"], json_data["block_position"], json_data["is_green"],
+            json_data["robot_name"], json_data["robot_position"],
+            json_data["block_position"], json_data["is_green"],
             json_data["is_moving_block"]
         )
 

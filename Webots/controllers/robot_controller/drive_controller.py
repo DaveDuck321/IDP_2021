@@ -26,6 +26,9 @@ class DriveController:
         self.__waypoint_index = 0
         self.__waypoints = waypoints
 
+    def has_waypoints(self):
+        return len(self.__waypoints) > 0
+
     def halt(self):
         """
             Stop both motors immediately.
@@ -39,6 +42,7 @@ class DriveController:
             Returns True if the final waypoint has been reached.
         """
         if self.__waypoint_index >= len(self.__waypoints):
+            self.__waypoints = []
             return True
 
         target_waypoint = self.__waypoints[self.__waypoint_index]
@@ -52,7 +56,7 @@ class DriveController:
         return self.__waypoint_index == len(self.__waypoints)
 
     def navigate_toward_point(self, positioning_system, destination, reverse=False):
-        max_speed = self._left_motor.getMaxVelocity() / 2
+        max_speed = self._left_motor.getMaxVelocity()
 
         # the importance of this value depends on the distance away from
         # the point. Some fine tuning later down the line may be necessary
@@ -91,6 +95,27 @@ class DriveController:
 
         left_speed = min(max(-error * p, -max_speed), max_speed)
         right_speed = min(max(error * p, -max_speed), max_speed)
+
+        self._left_motor.setVelocity(-left_speed)
+        self._right_motor.setVelocity(-right_speed)
+        return False
+
+    def rotate_absolute_angle(self, positioning_system, goal_bearing, tolerance=math.pi / 180.0):
+        current_bearing = positioning_system.get_world_bearing()
+        bearing_error = current_bearing - goal_bearing
+        if bearing_error > math.pi:
+            bearing_error -= 2 * math.pi
+        elif bearing_error < -math.pi:
+            bearing_error += 2 * math.pi
+
+        if abs(bearing_error) <= tolerance:
+            return True
+
+        p = 20.0
+        max_speed = self._left_motor.getMaxVelocity() / 2
+
+        left_speed = min(max(-bearing_error * p, -max_speed), max_speed)
+        right_speed = min(max(bearing_error * p, -max_speed), max_speed)
 
         self._left_motor.setVelocity(-left_speed)
         self._right_motor.setVelocity(-right_speed)
