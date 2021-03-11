@@ -70,7 +70,7 @@ class ExternalController:
         elif isinstance(message, protocol.BlockScanResult):
             arena_map = self.mapping_controller.get_clear_movement_map()
             robot_name, robot_pos = message.robot_name, message.robot_position
-            print(f"Scan result controller, block color: {message.color}")
+            # print(f"Scan result controller, block color: {message.color}")
 
             if message.is_moving_block:
                 # Block has been successfully picked up, inform the mapping program
@@ -82,7 +82,7 @@ class ExternalController:
                         arena_map, robot_pos, robot_name
                     )
             else:
-                print("Update color reading ", message.color)
+                # print("Update color reading ", message.color)
                 self.mapping_controller.update_with_color_reading(message.block_position, message.color)
 
                 cluster_position = self.mapping_controller.predict_block_locations()

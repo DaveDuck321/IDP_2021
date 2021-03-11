@@ -10,14 +10,12 @@ class ServoArmController:
     def stationary_scan(self, positioning_system):
         if self.scan_started:
             if positioning_system.get_turret_angle() == math.pi:
-                print("stationary scan complete")
                 self.scan_started = False
                 return True
             positioning_system.spin_turret(self.scanning_speed)
         elif positioning_system.get_turret_angle() > 0.00:
             positioning_system.spin_turret(-self.scanning_speed)
         else:
-            print("running stationary scan")
             self.scan_started = True
         return False
 

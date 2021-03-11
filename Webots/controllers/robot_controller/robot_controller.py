@@ -95,14 +95,13 @@ class RobotController:
 
     def get_color_data(self):
         data = self.light.getValue()
-        print("[LOG] Color data: ", data)
+        # print("[LOG] Color data: ", data)
 
     def process_message(self, message):
         """
             Take action on the received message.
         """
         if isinstance(message, protocol.WaypointList):
-            print("processing waypoint message")
             self.queued_waypoints.append(message.waypoints)
         else:
             raise NotImplementedError()
@@ -113,7 +112,6 @@ class RobotController:
         """
         for message in self.radio.get_messages():
             # Ensure this is robot the correct recipient
-            print("Received message", message.robot_name)
             if message.robot_name == self.robot.getName():
                 self.process_message(message)
 
@@ -171,6 +169,7 @@ class RobotController:
             return
 
         next_waypoints = self.queued_waypoints.pop(0)
+
         if self.current_task == Tasks.BLOCK_COLLECTION:
             self.drive_controller.set_waypoints(next_waypoints[:-1])
             self.block_collection_controller.set_block_pos(next_waypoints[-1])

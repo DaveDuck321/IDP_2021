@@ -26,7 +26,7 @@ class IRSensor:
         x = self.sensor.getValue()
         y = float('inf')
         if x > 654:  # maximum received value from sensor, anything more is too close
-            print("attempted to calculate distance for value closer than sensor capability")
+            # print("attempted to calculate distance for value closer than sensor capability")
             return y
         for val_pair in self.pairs:
             (r1, r2), (d1, d2) = val_pair

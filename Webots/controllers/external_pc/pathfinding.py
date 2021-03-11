@@ -189,7 +189,7 @@ class PathfindingController:
             Finds paths for each known block from current robot and returns path to nearest, together with location
             for BlockCollection
         """
-        print("calculating path to nearest block")
+        # print("calculating path to nearest block")
         arena_map = np.swapaxes(arena_map, 0, 1)
         robot_pos_matrix = self.world_to_grid_coords(robot_pos)
         arena_map_with_border = np.zeros(self.arena_shape, dtype=np.bool)
@@ -227,7 +227,7 @@ class PathfindingController:
 
             Note: ONLY CALL ONCE PER BLOCK
         """
-        print("calculating path back to base")
+        # print("calculating path back to base")
         arena_map = np.swapaxes(arena_map, 0, 1)
         arena_map_with_border = np.zeros(self.arena_shape, dtype=np.bool)
         arena_map_with_border[1:-1, 1:-1] = arena_map

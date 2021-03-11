@@ -75,18 +75,18 @@ class BlockCollection:
             self.drive_controller.set_waypoints([self.__block_pos])
             self.cur_step = self.drive_over_block
             self.rolling_IR_Readings = [IR_dist] * 3
-            print("drive over block")
+            # print("drive over block")
         elif IR_dist is not None and IR_dist >= 0.3:
             self.target_bearing = (self.positioning_system.get_world_bearing() + math.pi / 6.0) % (2 * math.pi)
             self.min_IR_dist = (IR_dist, self.positioning_system.get_world_bearing())
             self.cur_step = self.IR_search_setup
-            print("IR_search_setup")
+            # print("IR_search_setup")
 
         return self.IN_PROGRESS
 
     def IR_search_setup(self):
         if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.target_bearing):
-            print("[Info] Seting up IR search")
+            # print("[Info] Seting up IR search")
 
             self.cur_step = self.IR_search
             self.target_bearing = (self.positioning_system.get_world_bearing(
@@ -148,12 +148,12 @@ class BlockCollection:
         self.drive_controller.halt()
         data = self.light.getValue()
         if data > 500:  # completely arbitrary threshold, ask Electronics for the real one
-            print("Identified Green Block")
+            print(self.robot_name, "Identified Green Block")
             if self.__block_color is not None and self.__block_color != "green":
                 raise Exception("Detected green, was told it was red")
             self.__block_color = util.get_robot_name("green")
         else:
-            print("Identified Red Block")
+            print(self.robot_name, "Identified Red Block")
             if self.__block_color is not None and self.__block_color != "red":
                 raise Exception("Detected red, was told it was green")
             self.__block_color = util.get_robot_name("red")
