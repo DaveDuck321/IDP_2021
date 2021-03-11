@@ -116,6 +116,21 @@ class ScanDistanceReading(Message):
 # ---------------------------------
 
 
+class RemoveWaypoints(Message):
+    def __init__(self, robot_target):
+        Message.__init__(self, robot_target)
+
+    @staticmethod
+    def get_type():
+        return "remove_waypoints"
+
+    @classmethod
+    def build_from_JSON(cls, json_data):
+        assert json_data["type"] == cls.get_type()
+
+        return cls(json_data["robot_name"])
+
+
 class WaypointList(Message):
     def __init__(self, robot_target, waypoints):
         Message.__init__(self, robot_target)
@@ -159,6 +174,7 @@ MESSAGE_MAPPINGS = {
     AskForBlockPath.get_type(): AskForBlockPath,
     ReportBlockDropoff.get_type(): ReportBlockDropoff,
     KillImmediately.get_type(): KillImmediately,
+    RemoveWaypoints.get_type(): RemoveWaypoints,
 }
 
 

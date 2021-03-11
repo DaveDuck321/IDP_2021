@@ -99,6 +99,10 @@ class RobotController:
             self.queued_waypoints.append(message.waypoints)
         elif isinstance(message, protocol.KillImmediately):
             self.queued_task = Tasks.NONE
+        elif isinstance(message, protocol.RemoveWaypoints):
+            self.drive_controller.set_waypoints([])
+            self.queued_waypoints = []
+            self.queued_task = Tasks.SWITCH_BLOCK_TARGET
         else:
             raise NotImplementedError()
 

@@ -4,7 +4,7 @@ import mapping
 
 import numpy as np
 from queue import PriorityQueue
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 
 def dilate(grid, iterations):
@@ -186,8 +186,9 @@ class PathfindingController:
 
     def get_nearest_block_path(self, robot_name, arena_map, clusters, robot_pos):
         """
-            Finds paths for each known block from current robot and returns path to nearest, together with location
-            for BlockCollection
+            Finds paths for each known block from current robot.
+            Returns: namedtuple("WaypointPath", ["distance", "waypoint_path", "release_pos", "goal_pos"])
+
         """
         # print("calculating path to nearest block")
         arena_map = np.swapaxes(arena_map, 0, 1)
@@ -195,9 +196,9 @@ class PathfindingController:
         arena_map_with_border = np.zeros(self.arena_shape, dtype=np.bool)
         arena_map_with_border[1:-1, 1:-1] = arena_map
 
-        shortest_path = np.inf
-        waypoint_path = []
-        block_release_pos = None
+        WaypointPath = namedtuple("WaypointPath", ["distance", "waypoint_path", "release_pos", "goal_pos"])
+        shortest_path = WaypointPath(np.inf, [], (0, 0), (0, 0))
+
         path_mask = np.zeros((self.arena_shape), dtype=np.bool)
         for cluster in clusters:
             # Filter out blocks of an incorrect color
@@ -211,14 +212,14 @@ class PathfindingController:
                 robot_name, arena_map_with_border, robot_pos_matrix, block_pos_matrix
             )
 
-            if dist < shortest_path:
-                shortest_path = dist
-                waypoint_path = waypoints
-                block_release_pos = release_pos
+            if dist < shortest_path.distance:
+                shortest_path = WaypointPath(
+                    dist, waypoints[::-1], release_pos, cluster.coord
+                )
                 self.path_masks[robot_name] = path_mask
 
         # self.send_to_display(arena_map_with_border)
-        return waypoint_path[::-1], block_release_pos
+        return shortest_path
 
     def get_dropoff_path(self, arena_map, robot_pos, robot_name):
         """
