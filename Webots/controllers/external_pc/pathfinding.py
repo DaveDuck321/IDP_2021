@@ -50,6 +50,7 @@ class PathfindingController:
             np_image[:, :, 0] = np.where(self.path_masks["Small"], 255, 0)
         if "Fluffy" in self.path_masks:
             np_image[:, :, 1] = np.where(self.path_masks["Fluffy"], 255, 0)
+        np_image = np.swapaxes(np_image, 0, 1)
 
         image = self._display_pathfinding.imageNew(
             np_image.tobytes(),
@@ -98,24 +99,24 @@ class PathfindingController:
 
         # create a bool map, where an obstacle is True and free space is False
         arena_map = np.invert(arena_map)
-        arena_map = arena_map | dilate(arena_map, 10)
+        arena_map = arena_map | dilate(arena_map, 5)
 
         # remove the area around the current target location, to eliminate the block to pick
         # up from the mask of areas not to be traversed
-        arena_map[max(0, goal[0] - 10): min(arena_map.shape[0] - 1, goal[0] + 10),
-                  max(0, goal[1] - 10): min(arena_map.shape[1] - 1, goal[1] + 10)] = False
+        arena_map[max(0, goal[0] - 20): min(arena_map.shape[0] - 1, goal[0] + 20),
+                  max(0, goal[1] - 20): min(arena_map.shape[1] - 1, goal[1] + 20)] = False
 
         # add the paths of the other robot to the "Do Not Travel" areas
         for other_name in self.path_masks:
             # Dilate all other robot paths
             if other_name == robot_name:
                 continue
-
-            arena_map = arena_map | dilate(self.path_masks[other_name], 15)
+            arena_map = arena_map | dilate(self.path_masks[other_name], 10)
 
         # add the locations of already delivered blocks to the "Do Not Travel" areas
         arena_map = arena_map | self.mask_delivered_blocks(arena_map)
 
+        self.send_to_display(arena_map)
         # explore the map with added heuristic until it is all explored or you have reached the goal
         while not to_explore.empty():
             _, (cur_x, cur_z) = to_explore.get()
@@ -124,8 +125,9 @@ class PathfindingController:
             for direction, (x, z, dist) in enumerate(walks):
                 # check if movement is in map
                 if not (0 <= cur_x + x < arena_map.shape[0] and 0 <= cur_z + z < arena_map.shape[1]):
-                    if arena_map[cur_x + x, cur_z + z]:  # check if movement is in obstacle
-                        continue  # Movement is outside of map or inside an obstacle
+                    continue
+                if arena_map[cur_x + x, cur_z + z] == 1:  # check if movement is in obstacle
+                    dist *= 1000
 
                 # if already processed and too expensive, skip reevaluation
                 if distances[cur_x + x, cur_z + z] != -1:
@@ -205,7 +207,7 @@ class PathfindingController:
                 block_release_pos = release_pos
                 self.path_masks[robot_name] = path_mask
 
-        self.send_to_display(arena_map_with_border)
+        # self.send_to_display(arena_map_with_border)
         return waypoint_path[::-1], block_release_pos
 
     def get_dropoff_path(self, arena_map, robot_pos, robot_name):
@@ -214,6 +216,7 @@ class PathfindingController:
             location for BlockCollection release.
         """
         print("calculating path back to base")
+        arena_map = np.swapaxes(arena_map, 0, 1)
         arena_map_with_border = np.ones(self.arena_shape, dtype=np.bool)
         arena_map_with_border[1:-1, 1:-1] = arena_map
 
@@ -231,5 +234,5 @@ class PathfindingController:
         block_release_pos = self.dropoff_locations[robot_name][self.number_returned[robot_name]]
         self.path_masks[robot_name] = path_mask
 
-        self.send_to_display(arena_map_with_border)
+        # self.send_to_display(arena_map_with_border)
         return waypoints, block_release_pos
