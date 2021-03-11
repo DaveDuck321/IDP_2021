@@ -95,6 +95,7 @@ class PathfindingController:
         distances = -np.ones((arena_map.shape), dtype=np.float64)
         directions = -np.ones((arena_map.shape), dtype=np.int32)
         path_mask = np.zeros((arena_map.shape), dtype=np.bool)
+        death_mask = np.zeros((arena_map.shape), dtype=np.bool)
         distances[start] = 0
         # PriorityQueue to order squares to visit by their distance + manhatte_distance to the goal
         # meaning that it can find the optimal route without exploring the whole map
@@ -106,7 +107,7 @@ class PathfindingController:
         arena_map = np.invert(arena_map)
 
         # add the locations of already delivered blocks to the "Do Not Travel" areas
-        arena_map = arena_map | self.mask_delivered_blocks(arena_map)
+        death_mask = death_mask | dilate(self.mask_delivered_blocks(arena_map), 7)
 
         # leave a safety margin around areas of "Do Not Travel"
         arena_map = arena_map | dilate(arena_map, 7)
@@ -121,7 +122,7 @@ class PathfindingController:
             # Dilate all other robot paths
             if other_name == robot_name:
                 continue
-            arena_map = arena_map | dilate(self.path_masks[other_name], 7)
+            death_mask = death_mask | dilate(self.path_masks[other_name], 7)
 
         self.send_to_display(arena_map)
         # explore the map with added heuristic until it is all explored or you have reached the goal
@@ -132,6 +133,8 @@ class PathfindingController:
             for direction, (x, z, dist) in enumerate(walks):
                 # check if movement is in map
                 if not (0 <= cur_x + x < arena_map.shape[0] and 0 <= cur_z + z < arena_map.shape[1]):
+                    continue
+                if death_mask[cur_x + x, cur_z + z]:
                     continue
                 if arena_map[cur_x + x, cur_z + z] == 1:  # check if movement is in obstacle
                     dist *= 1000
@@ -172,7 +175,7 @@ class PathfindingController:
             goal_dist = distances[goal] - distances[cur_x, cur_z]
             if 3 < goal_dist < 5:
                 release_pos = self.grid_to_world_coord((cur_x, cur_z))
-            if 7.0 < goal_dist < 9:
+            if 9 < goal_dist < 11:
                 waypoints = [self.grid_to_world_coord((cur_x, cur_z))]
             path_mask[cur_x, cur_z] = 1
             if directions[cur_x, cur_z] != direction:

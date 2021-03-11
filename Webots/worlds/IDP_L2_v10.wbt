@@ -79,7 +79,7 @@ target {
   name "target(1)"
 }
 target {
-  translation 0.79 0.05 0.38
+  translation 0.8 0.05 0.38
   name "target(1)"
 }
 target {
