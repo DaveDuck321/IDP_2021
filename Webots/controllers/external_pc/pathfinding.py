@@ -24,12 +24,12 @@ class PathfindingController:
     def __init__(self, display_pathfinding, arena_shape=(240, 240)):
 
         self.robots_spawn = {
-            "Fluffy": (0.0, -0.3),
-            "Small": (0.0, 0.3),
+            "Fluffy": (0.0, -0.28),
+            "Small": (0.0, 0.28),
         }
         self.dropoff_locations = {
-            "Fluffy": [(-0.08, -0.47), (-0.03, -0.47), (0.03, -0.47), (0.08, -0.47)],
-            "Small": [(-0.16, 0.25), (-0.06, 0.25), (0.04, 0.25), (0.14, 0.25)],
+            "Fluffy": [(-0.105, -0.47), (-0.035, -0.47), (0.035, -0.47), (0.105, -0.47)],
+            "Small": [(-0.105, 0.47), (-0.035, 0.47), (0.035, 0.47), (0.105, 0.47)],
         }
 
         self.number_returned = defaultdict(int)
@@ -76,6 +76,10 @@ class PathfindingController:
             Returns mask of starting area based on number of blocks delivered
         """
         delivered_blocks_mask = np.zeros((arena_map.shape), dtype=np.bool)
+        for robot_name in self.dropoff_locations:
+            for block_pos in self.dropoff_locations[robot_name][:self.number_returned[robot_name]]:
+                (x, z) = self.world_to_grid_coords(block_pos)
+                delivered_blocks_mask[x - 2:x + 3, z - 2:z + 3] = True
 
         return delivered_blocks_mask
 
@@ -99,7 +103,12 @@ class PathfindingController:
 
         # create a bool map, where an obstacle is True and free space is False
         arena_map = np.invert(arena_map)
-        arena_map = arena_map | dilate(arena_map, 5)
+
+        # add the locations of already delivered blocks to the "Do Not Travel" areas
+        arena_map = arena_map | self.mask_delivered_blocks(arena_map)
+
+        # leave a safety margin around areas of "Do Not Travel"
+        arena_map = arena_map | dilate(arena_map, 12)
 
         # remove the area around the current target location, to eliminate the block to pick
         # up from the mask of areas not to be traversed
@@ -112,9 +121,6 @@ class PathfindingController:
             if other_name == robot_name:
                 continue
             arena_map = arena_map | dilate(self.path_masks[other_name], 10)
-
-        # add the locations of already delivered blocks to the "Do Not Travel" areas
-        arena_map = arena_map | self.mask_delivered_blocks(arena_map)
 
         self.send_to_display(arena_map)
         # explore the map with added heuristic until it is all explored or you have reached the goal
