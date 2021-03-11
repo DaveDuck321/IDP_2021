@@ -18,7 +18,7 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.998357296143914 -0.04330195803925552 0.037518657574329796 1.625430092979437
+  orientation -0.9983494879846838 -0.04331050879819222 0.03771603993477204 1.6204383259874382
   position -0.39324032383150254 7.7642164261443645 -0.3480369212801875
 }
 Background {
@@ -33,6 +33,9 @@ Floor {
 }
 Robot {
   children [
+    Display {
+      name "display_pathfinding"
+    }
     Display {
       name "display_explored"
       width 240
