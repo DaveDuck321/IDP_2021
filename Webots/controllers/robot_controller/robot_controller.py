@@ -78,8 +78,6 @@ class RobotController:
         # Start with the pincer fully open
         self.pincer_controller.open_pincer()
 
-        # self.stationary_scan()
-        # self.get_waypoints()
         self.get_color_data()
 
     def send_new_scan(self):
@@ -95,24 +93,6 @@ class RobotController:
     def get_color_data(self):
         data = self.light.getValue()
         print("[LOG] Color data: ", data)
-
-    """
-    def stationary_scan(self):
-        gps_data = self.gps.getValues()
-        compass_data = self.compass.getValues()
-        bearing = math.atan2(compass_data[0], compass_data[2])
-
-        self.turret_motor.setPosition(0.0)
-        self.turret_motor.setVelocity(self.turret_motor.getMaxVelocity())
-        NUM_SCANS = 150
-
-        while self.robot.step(self.timestep) != -1:
-            for i in range(NUM_SCANS):
-                self.turret_motor.setPosition(3.141592 * i/NUM_SCANS)
-                self.robot.step(self.timestep)
-                self.distance_data(3.141592 * i/NUM_SCANS, bearing, gps_data)
-            return
-    """
 
     def process_message(self, message):
         """
@@ -147,6 +127,8 @@ class RobotController:
         """
         if about_to_end == Tasks.NAVIGATE_TO_WAYPOINT:
             self.drive_controller.halt()
+        if about_to_end == Tasks.BLOCK_COLLECTION:
+            self.block_collection_controller = None
 
     def __initialize_queued_task(self, about_to_end, about_to_start):
         """
@@ -162,8 +144,13 @@ class RobotController:
             self.pincer_controller.close_pincer()
         if about_to_start == Tasks.BLOCK_COLLECTION:
             self.block_collection_controller = BlockCollection(
-                self.robot, self.drive_controller, self.positioning_system,
-                self.pincer_controller, self.light, self.radio, self.IR_sensor)
+                self.robot.getName(),
+                self.drive_controller,
+                self.positioning_system,
+                self.pincer_controller,
+                self.light, self.radio,
+                self.IR_sensor
+            )
 
     def switch_to_queued_task(self):
         """
