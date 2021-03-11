@@ -48,3 +48,12 @@ def normalize_radian(phase):
         Normalizes a phase radian between +/- pi.
     """
     return (phase + math.pi) % (2 * math.pi) - math.pi
+
+
+def get_robot_name(color):
+    if color == "green":
+        return "Fluffy"
+    elif color == "red":
+        return "Small"
+
+    raise ValueError(f"Bad robot color {color}")

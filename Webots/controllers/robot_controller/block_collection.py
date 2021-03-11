@@ -1,44 +1,47 @@
 from common import protocol
 import math
+from common import util
+
+BLOCK_OVERSHOOT = 0.05
 
 
 class BlockCollection:
-    def __init__(self, robot, drive_controller, positioning_system,
+    def __init__(self, robot_name, drive_controller, positioning_system,
                  pincer_controller, light, radio, IR_sensor):
-        self.robot = robot
+
+        # Robot info
+        self.robot_name = robot_name
         self.drive_controller = drive_controller
         self.positioning_system = positioning_system
         self.pincer_controller = pincer_controller
         self.light = light
         self.radio = radio
         self.IR_sensor = IR_sensor
-        self.robot_color = self.get_robot_color()
+
+        # Current navigation state
         self.__block_pos = None
         self.__block_color = None
         self.__starting_pos = None
         self.block_collected = False
         self.wait_for_pincer_index = 0
         self.target_bearing = None
+        self.rolling_IR_Readings = []
         self.min_IR_dist = (float('inf'), 0.0)
         self.cur_step = self.drive_to_block
 
+        print(self.robot_name)
         message = protocol.BlockScanResult(
-            self.robot.getName(),
+            self.robot_name,
             self.positioning_system.get_2D_position(),
             self.positioning_system.get_2D_position(),
             self.__block_color,
             self.block_collected
         )
+        print(message)
         self.radio.send_message(message)
 
     def __call__(self):
         return self.cur_step()
-
-    def get_robot_color(self):
-        if self.robot.getName() == "Small":
-            return "red"
-        if self.robot.getName() == "Fluffy":
-            return "green"
 
     def set_block_pos(self, block_pos, block_color=None):
         self.__block_pos = block_pos
@@ -80,22 +83,33 @@ class BlockCollection:
 
     def IR_search_setup(self):
         if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.target_bearing):
+            print("[Info] Seting up IR search")
+
             self.cur_step = self.IR_search
             self.target_bearing = (self.positioning_system.get_world_bearing(
             ) - math.pi / 3.0 + 2 * math.pi) % (2 * math.pi)
-            print("IR search")
+
+            # Hackfix IR readings
+            IR_dist = self.IR_sensor.get_distance()
+            self.rolling_IR_Readings = [IR_dist] * 3
         return False
 
     def IR_search(self):
-        IR_dist = self.IR_sensor.get_distance()
+        self.rolling_IR_Readings.append(self.IR_sensor.get_distance())
+        self.rolling_IR_Readings.pop(0)
+
+        # Take rolling average
+        IR_dist = sum(self.rolling_IR_Readings) / len(self.rolling_IR_Readings)
+
         if IR_dist is not None and IR_dist < self.min_IR_dist[0]:
             self.min_IR_dist = (IR_dist, self.positioning_system.get_world_bearing())
 
         if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.target_bearing):
-            self.__block_pos[0] = self.positioning_system.get_2D_position(
-            )[0] + (self.min_IR_dist[0] - 0.1) * math.cos(self.min_IR_dist[1])
-            self.__block_pos[1] = self.positioning_system.get_2D_position(
-            )[1] + (self.min_IR_dist[0] - 0.1) * math.sin(self.min_IR_dist[1])
+            robot_pos = self.positioning_system.get_2D_position()
+            self.__block_pos = (
+                robot_pos[0] + (self.min_IR_dist[0] - BLOCK_OVERSHOOT) * math.cos(self.min_IR_dist[1]),
+                robot_pos[1] + (self.min_IR_dist[0] - BLOCK_OVERSHOOT) * math.sin(self.min_IR_dist[1])
+            )
             self.drive_controller.set_waypoints([self.__block_pos])
             print(self.positioning_system.get_2D_position())
             print(self.__block_pos)
@@ -115,14 +129,14 @@ class BlockCollection:
             print("Identified Green Block")
             if self.__block_color is not None and self.__block_color != "green":
                 raise Exception("Detected green, was told it was red")
-            self.__block_color = "green"
+            self.__block_color = util.get_robot_name("green")
         else:
             print("Identified Red Block")
             if self.__block_color is not None and self.__block_color != "red":
                 raise Exception("Detected red, was told it was green")
-            self.__block_color = "red"
+            self.__block_color = util.get_robot_name("red")
 
-        if self.__block_color == self.robot_color:
+        if self.__block_color == self.robot_name:
             self.pincer_controller.close_pincer()
             self.block_collected = True
         else:
@@ -130,7 +144,7 @@ class BlockCollection:
             self.block_collected = False
 
         message = protocol.BlockScanResult(
-            self.robot.getName(),
+            self.robot_name,
             self.positioning_system.get_2D_position(),
             self.__block_pos,
             self.__block_color,
