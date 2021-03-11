@@ -112,8 +112,13 @@ class BlockCollection:
         """
             Move the robot forward until the block is in the pincers.
         """
-        if self.IR_sensor.get_distance() < BLOCK_IN_GRABBER_READING or \
-                self.drive_controller.navigate_waypoints(self.positioning_system):
+        self.rolling_IR_Readings.append(self.IR_sensor.get_distance())
+        self.rolling_IR_Readings.pop(0)
+
+        # Take rolling average
+        IR_dist = sum(self.rolling_IR_Readings) / len(self.rolling_IR_Readings)
+
+        if IR_dist < BLOCK_IN_GRABBER_READING or self.drive_controller.navigate_waypoints(self.positioning_system):
 
             robot_pos = self.positioning_system.get_2D_position()
             robot_bearing = self.positioning_system.get_world_bearing()
