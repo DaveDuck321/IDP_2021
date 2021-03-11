@@ -22,7 +22,7 @@ def filter_nan(number, default=math.inf):
     return number
 
 
-def get_distance(p1, p2):
+def get_distance(p1, p2=(0, 0)):
     """
         Returns the distance between two tuple coordinates.
     """

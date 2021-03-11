@@ -47,25 +47,6 @@ class BlockScanResult(Message):
         )
 
 
-class AskForBlockPath(Message):
-    def __init__(self, robot_name, robot_position):
-        Message.__init__(self, robot_name)
-        self.robot_position = util.filter_nans(robot_position)
-
-    @staticmethod
-    def get_type():
-        return "ask_for_block_path"
-
-    @classmethod
-    def build_from_JSON(cls, json_data):
-        assert json_data["type"] == cls.get_type()
-
-        return cls(
-            json_data["robot_name"],
-            json_data["robot_position"]
-        )
-
-
 class ReportBlockDropoff(Message):
     def __init__(self, robot_name, block_position):
         Message.__init__(self, robot_name)
@@ -116,40 +97,36 @@ class ScanDistanceReading(Message):
 # ---------------------------------
 
 
-class RemoveWaypoints(Message):
-    def __init__(self, robot_target):
-        Message.__init__(self, robot_target)
+class GiveRobotTarget(Message):
+    def __init__(self, robot, target):
+        Message.__init__(self, robot)
+        self.target = target
 
     @staticmethod
     def get_type():
-        return "remove_waypoints"
+        return "give_robot_target"
 
     @classmethod
     def build_from_JSON(cls, json_data):
         assert json_data["type"] == cls.get_type()
 
-        return cls(json_data["robot_name"])
+        return cls(json_data["robot_name"], json_data["target"])
 
 
-class WaypointList(Message):
-    def __init__(self, robot_target, waypoints):
-        Message.__init__(self, robot_target)
-        self.waypoints = waypoints
-        if len(waypoints) == 0:
-            raise ValueError("Waypoint list should never be empty")
-
-    def __repr__(self):
-        return f"Type:{self.type}, Waypoints:{self.waypoints}"
+class AskRobotTakeover(Message):
+    def __init__(self, robot, target):
+        Message.__init__(self, robot)
+        self.target = target
 
     @staticmethod
     def get_type():
-        return "new_waypoint_list"
+        return "ask_robot_takeover"
 
     @classmethod
     def build_from_JSON(cls, json_data):
         assert json_data["type"] == cls.get_type()
 
-        return cls(json_data["robot_name"], json_data["waypoints"])
+        return cls(json_data["robot_name"], json_data["target"])
 
 
 class KillImmediately(Message):

@@ -12,7 +12,9 @@ from common import protocol, util
 from mapping import MappingController
 from pathfinding import PathfindingController
 
-# import numpy as np
+import numpy as np
+
+ROBOT_TAKEOVER_DISTANCE = 0.2
 
 TIME_STEP = 1
 APPROXIMATE_POSITION = 0.1  # 10cm
@@ -26,9 +28,6 @@ class ExternalController:
 
         # Current robot positions
         self.robot_positions = {}
-
-        # Current robot navigating status
-        self.robot_targets = {}
 
         # Controller IO
         self.radio = Radio(
@@ -57,20 +56,6 @@ class ExternalController:
                 message.arm_angle,
                 message.distance_readings
             )
-        elif isinstance(message, protocol.AskForBlockPath):
-            arena_map = self.mapping_controller.get_clear_movement_map()
-            robot_name, robot_pos = message.robot_name, message.robot_position
-
-            cluster_position = self.mapping_controller.predict_block_locations()
-
-            shortest_path = self.pathfinding_controller.get_nearest_block_path(
-                robot_name, arena_map,
-                cluster_position, robot_pos
-            )
-
-            self.robot_targets[message.robot_name] = RobotTarget(shortest_path.goal_pos, True)
-            message = protocol.WaypointList(robot_name, shortest_path.waypoint_path + [shortest_path.release_pos])
-            self.radio.send_message(message)
 
         elif isinstance(message, protocol.BlockScanResult):
             arena_map = self.mapping_controller.get_clear_movement_map()
@@ -124,23 +109,27 @@ class ExternalController:
         self.process_robot_messages()
         self.mapping_controller.output_to_displays()
 
-        # If robots are navigating to a block, ensure it still exists
+        # Navigate towards nearest block
         block_locations = self.mapping_controller.predict_block_locations()
-        for robot_name in self.robot_targets:
-            block_still_exists = False
-            target_position = self.robot_targets[robot_name]
-            if not target_position.is_block:
-                continue  # Only check if blocks exist for now
+        for robot_name in self.robot_positions:
+            # Find the closest block of the correct color
+            closest_block = (np.inf, np.inf)
+            for cluster in block_locations:
+                # Check, is known to be the other color
+                if cluster.color is not None and cluster.color != robot_name:
+                    continue
 
-            # Loop through all known blocks
-            for block in block_locations:
-                if util.get_distance(block.coord, target_position.coord) < APPROXIMATE_POSITION:
-                    block_still_exists = True
+                this_distance = util.get_distance(cluster.coord, self.robot_positions[robot_name])
+                if this_distance < util.get_distance(closest_block):
+                    closest_block = cluster.coord
 
-            if not block_still_exists and \
-                    util.get_distance(self.robot_positions[robot_name], target_position.coord) > NO_TURNING_BACK_REGION:
-                print("[info] purging block location")
-                self.radio.send_message(protocol.RemoveWaypoints(robot_name))
+            # Should the robot fine tune this part itself?
+            closest_distance = util.get_distance(closest_block)
+            if closest_distance < ROBOT_TAKEOVER_DISTANCE:
+                self.radio.send_message(protocol.AskRobotTakeover(robot_name, closest_block))
+            else:
+                # Send the robot its new target position (TODO prevent collisions)
+                self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_block))
 
 
 def main():
