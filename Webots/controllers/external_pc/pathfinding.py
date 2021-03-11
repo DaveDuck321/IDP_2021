@@ -86,12 +86,12 @@ class PathfindingController:
                   max(0, goal[1] - 10): min(arena_map.shape[1] - 1, goal[1] + 10)] = False
 
         # add the paths of the other robot to the "Do Not Travel" areas
-        for robot_name in self.path_masks:
+        for other_name in self.path_masks:
             # Dilate all other robot paths
-            if robot_name == robot_name:
+            if other_name == robot_name:
                 continue
 
-            arena_map = arena_map | dilate(self.path_masks[robot_name], 15)
+            arena_map = arena_map | dilate(self.path_masks[other_name], 15)
 
         # add the locations of already delivered blocks to the "Do Not Travel" areas
         arena_map = arena_map | self.mask_delivered_blocks(arena_map)
