@@ -300,6 +300,9 @@ class MappingController:
         # Save this info for the visualization
         self.__last_sensor_positions[robot_name] = sensor_positions
 
+        # Counteract map degradation
+        self._probability_mask = np.clip(self._probability_mask * 1.01, 0, 1)
+
     def add_drop_off_region(self, position):
         """
             The block has been dropped off. Block should be excluded from all future scans.

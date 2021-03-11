@@ -18,7 +18,6 @@ TIME_STEP = 1
 class ExternalController:
     def __init__(self, emitter_channel, receiver_channel, polling_time=1):
         self.robot = Robot()
-        self.tick_hack = 0
 
         # Current robot positions
         self.robot_positions = {}
@@ -42,8 +41,6 @@ class ExternalController:
 
     def process_message(self, message):
         if isinstance(message, protocol.ScanDistanceReading):
-            if self.tick_hack > 500:
-                return  # TODO: delete immediately
             self.robot_positions[message.robot_name] = message.robot_position
 
             self.mapping_controller.update_with_scan_result(
