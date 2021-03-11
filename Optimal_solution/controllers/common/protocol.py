@@ -68,12 +68,13 @@ class ReportBlockDropoff(Message):
 
 class ScanDistanceReading(Message):
     def __init__(self, robot_name, robot_position, robot_bearing,
-                 arm_angle, distance_readings):
+                 arm_angle, distance_readings, holding_block):
         Message.__init__(self, robot_name)
-        self.robot_position = util.filter_nans(robot_position)
-        self.robot_bearing = util.filter_nan(robot_bearing)
-        self.arm_angle = util.filter_nan(arm_angle)
-        self.distance_readings = util.filter_nans(distance_readings)
+        self.robot_position = robot_position
+        self.robot_bearing = robot_bearing
+        self.arm_angle = arm_angle
+        self.distance_readings = distance_readings
+        self.holding_block = holding_block
 
     def __repr__(self):
         return f"Type:{self.type}, pos:{self.robot_position}, sensors:{self.distance_readings}"
@@ -89,7 +90,8 @@ class ScanDistanceReading(Message):
         return cls(
             json_data["robot_name"],
             json_data["robot_position"], json_data["robot_bearing"],
-            json_data["arm_angle"], json_data["distance_readings"]
+            json_data["arm_angle"], json_data["distance_readings"],
+            json_data["holding_block"]
         )
 
 # ---------------------------------
@@ -145,13 +147,15 @@ class KillImmediately(Message):
 
 
 MESSAGE_MAPPINGS = {
+    # Robot
     ScanDistanceReading.get_type(): ScanDistanceReading,
-    WaypointList.get_type(): WaypointList,
     BlockScanResult.get_type(): BlockScanResult,
-    AskForBlockPath.get_type(): AskForBlockPath,
     ReportBlockDropoff.get_type(): ReportBlockDropoff,
+
+    # Controller
+    GiveRobotTarget.get_type(): GiveRobotTarget,
+    AskRobotTakeover.get_type(): AskRobotTakeover,
     KillImmediately.get_type(): KillImmediately,
-    RemoveWaypoints.get_type(): RemoveWaypoints,
 }
 
 

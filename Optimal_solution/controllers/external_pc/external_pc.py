@@ -19,15 +19,15 @@ ROBOT_TAKEOVER_DISTANCE = 0.2
 TIME_STEP = 1
 APPROXIMATE_POSITION = 0.1  # 10cm
 NO_TURNING_BACK_REGION = 0.5  # 50cm
-RobotTarget = namedtuple("RobotTarget", ["coord", "is_block"])
+RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block"])
 
 
 class ExternalController:
     def __init__(self, emitter_channel, receiver_channel, polling_time=1):
         self.robot = Robot()
 
-        # Current robot positions
-        self.robot_positions = {}
+        # Current robot positions and status, this is a RobotState object
+        self.robot_states = {}
 
         # Controller IO
         self.radio = Radio(
@@ -48,7 +48,13 @@ class ExternalController:
 
     def process_message(self, message):
         if isinstance(message, protocol.ScanDistanceReading):
-            self.robot_positions[message.robot_name] = message.robot_position
+            # Robot regularly updates controller with its current status
+            # Record this and use it to generate the map
+            self.robot_states[message.robot_name] = RobotState(
+                message.robot_position,
+                message.robot_bearing,
+                message.holding_block
+            )
 
             self.mapping_controller.update_with_scan_result(
                 message.robot_name,
@@ -104,32 +110,37 @@ class ExternalController:
         for message in self.radio.get_messages():
             self.process_message(message)
 
+    def choose_action_for_robot(self, robot_name):
+        # Navigate towards nearest block
+        block_locations = self.mapping_controller.predict_block_locations()
+
+        # Find the closest block of the correct color
+        closest_block = (np.inf, np.inf)
+        for cluster in block_locations:
+            # Check, is known to be the other color
+            if cluster.color is not None and cluster.color != robot_name:
+                continue
+
+            this_distance = util.get_distance(cluster.coord, self.robot_positions[robot_name])
+            if this_distance < util.get_distance(closest_block):
+                closest_block = cluster.coord
+
+        # Should the robot fine tune this part itself?
+        closest_distance = util.get_distance(closest_block)
+        if closest_distance < ROBOT_TAKEOVER_DISTANCE:
+            self.radio.send_message(protocol.AskRobotTakeover(robot_name, closest_block))
+        else:
+            # Send the robot its new target position (TODO prevent collisions)
+            self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_block))
+
     def tick(self):
         # Check for robot messages, take an necessary actions
         self.process_robot_messages()
         self.mapping_controller.output_to_displays()
 
-        # Navigate towards nearest block
-        block_locations = self.mapping_controller.predict_block_locations()
-        for robot_name in self.robot_positions:
-            # Find the closest block of the correct color
-            closest_block = (np.inf, np.inf)
-            for cluster in block_locations:
-                # Check, is known to be the other color
-                if cluster.color is not None and cluster.color != robot_name:
-                    continue
-
-                this_distance = util.get_distance(cluster.coord, self.robot_positions[robot_name])
-                if this_distance < util.get_distance(closest_block):
-                    closest_block = cluster.coord
-
-            # Should the robot fine tune this part itself?
-            closest_distance = util.get_distance(closest_block)
-            if closest_distance < ROBOT_TAKEOVER_DISTANCE:
-                self.radio.send_message(protocol.AskRobotTakeover(robot_name, closest_block))
-            else:
-                # Send the robot its new target position (TODO prevent collisions)
-                self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_block))
+        # Each robot is assigned its own task
+        for robot_name in self.robot_states:
+            self.choose_action_for_robot(robot_name)
 
 
 def main():

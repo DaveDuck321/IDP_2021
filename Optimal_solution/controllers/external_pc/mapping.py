@@ -272,7 +272,7 @@ class MappingController:
             It is assumed that these sensor lie on either end of the robot's arm.
         """
         self.invalid_cache()
-        robot_position = self.__robot_positions_ref[robot_name]
+        robot_position = self.__robot_positions_ref[robot_name].position
 
         sensor_bearings = (
             util.normalize_radian(robot_bearing - arm_angle),
@@ -284,7 +284,7 @@ class MappingController:
         )
 
         other_robot_pos = [
-            self.__robot_positions_ref[other_robot]
+            self.__robot_positions_ref[other_robot].position
             for other_robot in self.__robot_positions_ref
             if other_robot != robot_name]
 
@@ -532,7 +532,7 @@ class MappingController:
         # Draw robot and sensor positions to visualization
         for robot_name in self.__robot_positions_ref:
             # Multiple robots
-            robot_pos = _to_screenspace(self.__robot_positions_ref[robot_name])
+            robot_pos = _to_screenspace(self.__robot_positions_ref[robot_name].position)
             occupancy_map[robot_pos[0], robot_pos[1], :] = (255, 0, 0)
 
             # Multiple sensors per robot

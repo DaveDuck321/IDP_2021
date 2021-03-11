@@ -9,7 +9,6 @@ from drive_controller import DriveController
 from positioning_systems import PositioningSystem
 from pincer_controller import PincerController
 from ultrasonic_emulator import RealUltrasonic
-from block_collection import BlockCollection
 from scanning import ServoArmController
 from infrared_controller import IRSensor
 
@@ -23,13 +22,15 @@ TIME_STEP = 5  # ms
 
 class Tasks(Enum):
     NONE = 0
+    INITIAL_SCAN = 1
+    FOLLOWING_CONTROLLER = 2
 
 
 class RobotController:
     def __init__(self, sensor_polling=5):
         self.robot = Robot()
         self.current_task = Tasks.NONE
-        self.queued_task = Tasks.STATIONARY_SCAN
+        self.queued_task = Tasks.INITIAL_SCAN
 
         self.robot_color = "green"
 
@@ -73,7 +74,7 @@ class RobotController:
         # Start with the pincer fully open
         self.pincer_controller.open_pincer()
 
-        self.queued_waypoints = []
+        self.requested_target = None
 
     def send_new_scan(self):
         message = protocol.ScanDistanceReading(
@@ -89,14 +90,14 @@ class RobotController:
         """
             Take action on the received message.
         """
-        if isinstance(message, protocol.WaypointList):
-            self.queued_waypoints.append(message.waypoints)
-        elif isinstance(message, protocol.KillImmediately):
+        if isinstance(message, protocol.KillImmediately):
             self.queued_task = Tasks.NONE
-        elif isinstance(message, protocol.RemoveWaypoints):
-            self.drive_controller.set_waypoints([])
-            self.queued_waypoints = []
-            self.queued_task = Tasks.SWITCH_BLOCK_TARGET
+        elif isinstance(message, protocol.GiveRobotTarget):
+            self.requested_target = message.target
+
+            # Wake the robot if its not doing anything
+            if self.current_task == Tasks.NONE:
+                self.queued_task = Tasks.FOLLOWING_CONTROLLER
         else:
             raise NotImplementedError()
 
@@ -117,15 +118,6 @@ class RobotController:
                     DO NOT MODIFY THESE VARIABLES HERE
 
         """
-        if about_to_end == Tasks.NAVIGATE_TO_WAYPOINT:
-            self.drive_controller.halt()
-
-        if about_to_end == Tasks.BLOCK_COLLECTION:
-            self.block_collection_controller = None
-            self.drive_controller.halt()
-
-        if about_to_end == Tasks.BLOCK_COLLECTION:
-            self.pincer_controller.open_pincer()
 
     def __initialize_queued_task(self, about_to_end, about_to_start):
         """
@@ -135,21 +127,8 @@ class RobotController:
                     DO NOT MODIFY THESE VARIABLES HERE
 
         """
-        if about_to_start == Tasks.STATIONARY_SCAN:
+        if about_to_start == Tasks.INITIAL_SCAN:
             self.drive_controller.halt()
-        if about_to_start == Tasks.GRAB_BLOCK:
-            self.pincer_controller.close_pincer()
-        if about_to_start == Tasks.SWITCH_BLOCK_TARGET:
-            self.pincer_controller.open_pincer()
-        if about_to_start == Tasks.BLOCK_COLLECTION:
-            self.block_collection_controller = BlockCollection(
-                self.robot.getName(),
-                self.drive_controller,
-                self.positioning_system,
-                self.pincer_controller,
-                self.light, self.radio,
-                self.IR_sensor
-            )
 
     def switch_to_queued_task(self):
         """
@@ -163,18 +142,6 @@ class RobotController:
         self.__clean_current_task(self.current_task, self.queued_task)
         self.current_task = self.queued_task
 
-    def process_queued_waypoints(self):
-        if len(self.queued_waypoints) == 0 or self.drive_controller.has_waypoints():
-            return
-
-        next_waypoints = self.queued_waypoints.pop(0)
-
-        if self.current_task == Tasks.BLOCK_COLLECTION:
-            self.drive_controller.set_waypoints(next_waypoints[:-1])
-            self.block_collection_controller.set_block_pos(next_waypoints[-1])
-        elif self.current_task == Tasks.NAVIGATE_TO_WAYPOINT:
-            self.drive_controller.set_waypoints(next_waypoints)
-
     def tick(self):
         # Get the lastest information from controller
         self.process_controller_instructions()
@@ -186,32 +153,22 @@ class RobotController:
         self.send_new_scan()
 
         # Execute the current task
-        if self.current_task == Tasks.NAVIGATE_TO_WAYPOINT:
-            if self.drive_controller.navigate_waypoints(self.positioning_system, reverse=True):
-                # Reached final waypoint! Change to grabbing state
-                self.queued_task = Tasks.BLOCK_COLLECTION
 
-        elif self.current_task == Tasks.STATIONARY_SCAN:
+        if self.current_task == Tasks.FOLLOWING_CONTROLLER:
+            # Ensure robot, knows where to go, if not wait for instructions
+            if self.requested_target is None:
+                self.queued_task = Tasks.NONE  # Wait for further instructions
+
+            self.drive_controller.navigate_toward_point(self.positioning_system, self.requested_target)
+
+        elif self.current_task == Tasks.INITIAL_SCAN:
             if self.scanning_controller.stationary_scan(self.positioning_system):
-                self.queued_task = Tasks.BLOCK_COLLECTION
-
-        elif self.current_task == Tasks.BLOCK_COLLECTION:
-            result = self.block_collection_controller()
-            if result == BlockCollection.IN_PROGRESS:
-                pass
-
-            elif result == BlockCollection.BLOCK_IGNORED:
-                self.queued_task = Tasks.SWITCH_BLOCK_TARGET
-
-            else:
-                raise NotImplementedError()
-
-        elif self.current_task == Tasks.SWITCH_BLOCK_TARGET:
-            # Immediately switch the task back to block collection
-            self.queued_task = Tasks.BLOCK_COLLECTION
+                # Only blank the robot controller if nothing is planned
+                self.queued_task = self.queued_task or Tasks.NONE
 
         elif self.current_task == Tasks.NONE:
             pass  # TODO: maybe query controller here
+
         else:
             print("[ERROR] Unimplemented task type: ", self.current_task)
             raise NotImplementedError()
