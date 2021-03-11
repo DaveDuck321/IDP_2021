@@ -5,6 +5,7 @@ from functools import reduce
 import itertools
 
 ARM_LENGTH = 0.15  # 150 mm
+BLOCK_WIDTH = 6  # In px
 ROBOT_RADIUS = 1.4 * ARM_LENGTH
 ULTRASOUND_MINIMUM_READING = 0.1
 ULTRASOUND_RANGE = 1.3  # 1.3 m
@@ -338,7 +339,7 @@ class MappingController:
             # Mark exclusion reading on map with 90% certainty
             exclusion_mask = np.logical_and(
                 np.logical_and(
-                    distances < distance_from_wall - ULTRASOUND_NOISE,
+                    distances < min(distance_from_wall - ULTRASOUND_NOISE, 0.8 * ULTRASOUND_RANGE),
                     bearings < 0.8 * ULTRASOUND_ANGLE
                 ),
                 distances > 0
@@ -415,10 +416,18 @@ class MappingController:
                 its been explored and nothing was found.
             NOTE: This does not account for robot width, take care
         """
-        return np.logical_and(
+        clear_movement_map = np.logical_and(
             self.get_explore_status_map(),
             self.get_occupancy_map() < 0.005
         )
+
+        for block_position, _ in self._confirmed_blocks:
+            coord = _to_screenspace(block_position)
+            min_coord = coord - BLOCK_WIDTH // 2
+            max_coord = coord + BLOCK_WIDTH // 2
+            clear_movement_map[min_coord[0]: max_coord[0], min_coord[1]: max_coord[1]] = False
+
+        return clear_movement_map
 
     def get_explore_status_map(self):
         """

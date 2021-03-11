@@ -4,7 +4,7 @@ from common import util
 
 BLOCK_OVERSHOOT = 0.05
 BLOCK_IN_GRABBER_READING = 0.24
-ROBOT_PINCER_OFFSET = 0.04
+ROBOT_PINCER_OFFSET = 0.1
 
 
 class BlockCollection:
