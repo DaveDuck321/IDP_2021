@@ -21,6 +21,7 @@ TIME_STEP = 5  # ms
 
 
 class Tasks(Enum):
+    DEAD = -1
     NONE = 0
     INITIAL_SCAN = 1
     FOLLOWING_CONTROLLER = 2
@@ -31,8 +32,6 @@ class RobotController:
         self.robot = Robot()
         self.current_task = Tasks.NONE
         self.queued_task = Tasks.INITIAL_SCAN
-
-        self.robot_color = "green"
 
         # Setup radio for communication with external controller
         self.radio = Radio(
@@ -91,7 +90,7 @@ class RobotController:
             Take action on the received message.
         """
         if isinstance(message, protocol.KillImmediately):
-            self.queued_task = Tasks.NONE
+            self.queued_task = Tasks.DEAD
         elif isinstance(message, protocol.GiveRobotTarget):
             self.requested_target = message.target
 
@@ -129,6 +128,9 @@ class RobotController:
         """
         if about_to_start == Tasks.INITIAL_SCAN:
             self.drive_controller.halt()
+        if about_to_start == Tasks.DEAD:
+            self.drive_controller.halt()
+            self.positioning_system.kill_turret()
 
     def switch_to_queued_task(self):
         """
@@ -143,6 +145,10 @@ class RobotController:
         self.current_task = self.queued_task
 
     def tick(self):
+        # A dead robot can never be revived, don't even try to do anything
+        if self.current_task == Tasks.DEAD:
+            return
+
         # Get the lastest information from controller
         self.process_controller_instructions()
 
@@ -153,13 +159,15 @@ class RobotController:
         self.send_new_scan()
 
         # Execute the current task
-
         if self.current_task == Tasks.FOLLOWING_CONTROLLER:
-            # Ensure robot, knows where to go, if not wait for instructions
+            # Ensure robot knows where to go. If not, wait for instructions
             if self.requested_target is None:
                 self.queued_task = Tasks.NONE  # Wait for further instructions
 
             self.drive_controller.navigate_toward_point(self.positioning_system, self.requested_target)
+
+            # Also scan while driving
+            self.scanning_controller.driving_scan(self.positioning_system)
 
         elif self.current_task == Tasks.INITIAL_SCAN:
             if self.scanning_controller.stationary_scan(self.positioning_system):
@@ -172,10 +180,6 @@ class RobotController:
         else:
             print("[ERROR] Unimplemented task type: ", self.current_task)
             raise NotImplementedError()
-
-        # Demonstrate the mapping for moving turret
-        if self.current_task != Tasks.STATIONARY_SCAN:
-            self.scanning_controller.driving_scan(self.positioning_system)
 
         # Tick finished, switch tasks if necessary
         self.switch_to_queued_task()

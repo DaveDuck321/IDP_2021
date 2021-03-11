@@ -34,6 +34,9 @@ class PositioningSystem:
         self._turret_motor.setPosition(0)
         self._turret_motor.setVelocity(self.__target_velocity)
 
+    def kill_turret(self):
+        self._turret_motor.setVelocity(0)
+
     def spin_turret(self, speed):
         self.set_turret_angle(self.get_turret_angle() + speed)
 
