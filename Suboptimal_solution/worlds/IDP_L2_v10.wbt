@@ -1,0 +1,177 @@
+#VRML_SIM R2021a utf8
+WorldInfo {
+  basicTimeStep 8
+  coordinateSystem "NUE"
+  contactProperties [
+    ContactProperties {
+      material2 "slippy"
+      coulombFriction [
+        0
+      ]
+    }
+    ContactProperties {
+      material2 "block"
+      coulombFriction [
+        0.01
+      ]
+    }
+  ]
+}
+Viewpoint {
+  orientation -0.3559118953215998 -0.8841301073213829 -0.30272211035282254 1.7777107580615084
+  position -3.2462682012400617 2.904450892435423 -0.27840065830606747
+}
+Background {
+  skyColor [
+    0.15 0.45 1
+  ]
+}
+Floor {
+  size 2.4 2.4
+  appearance Asphalt {
+  }
+}
+target {
+  translation -0.7396 0.05 1.0751
+  name "target(1)"
+}
+target {
+  translation 0.311 0.05 1.0743
+  colour 0 1 0
+  name "target(1)"
+}
+Robot {
+  children [
+    Display {
+      name "display_pathfinding"
+      width 121
+      height 121
+    }
+    Display {
+      name "display_explored"
+      width 120
+      height 120
+    }
+    Display {
+      name "display_occupancy"
+      width 120
+      height 120
+    }
+    Receiver {
+      channel 1
+    }
+    Emitter {
+      channel 2
+    }
+  ]
+  name "robot(1)"
+  controller "external_pc"
+}
+target {
+  translation -0.9458 0.05 -0.0344
+  colour 0 1 0
+  name "target(2)"
+}
+target {
+  translation -0.3839 0.05 0.42
+  name "target(1)"
+}
+target {
+  translation -0.8766 0.05 -0.8046
+  name "target(1)"
+}
+target {
+  translation 0.9714 0.04 1.1059
+  name "target(0)"
+}
+target {
+  translation -0.5205 0.04 0.7057
+  colour 0 1 0
+  name "target(3)"
+}
+target {
+  translation 0.1102 0.04 -0.8416
+  colour 0 1 0
+  name "target(1)"
+}
+DEF Floor_colour Solid {
+  translation 0 0.0001 0.4
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+      }
+      geometry Plane {
+        size 0.4 0.4
+      }
+    }
+  ]
+  name "solid(6)"
+}
+DEF Floor_colour Solid {
+  translation 0 0.0001 -0.4
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+      }
+      geometry Plane {
+        size 0.4 0.4
+      }
+    }
+  ]
+  name "solid(5)"
+}
+DEF WALL_1 Solid {
+  translation 1.2 0.05 0
+  children [
+    DEF WALL_SHAPE Shape {
+      appearance PBRAppearance {
+        baseColor 0 0.333333 0
+        roughness 1
+        metalness 0
+      }
+      geometry Box {
+        size 0.02 0.1 2.38
+      }
+    }
+  ]
+  boundingObject USE WALL_SHAPE
+}
+DEF WALL_2 Solid {
+  translation -1.2 0.05 0
+  children [
+    USE WALL_SHAPE
+  ]
+  name "solid(1)"
+  boundingObject USE WALL_SHAPE
+}
+DEF WALL_3 Solid {
+  translation 0 0.05 -1.2
+  rotation 0 1 0 1.5708
+  children [
+    USE WALL_SHAPE
+  ]
+  name "solid(2)"
+  boundingObject USE WALL_SHAPE
+}
+DEF WALL_4 Solid {
+  translation 0 0.05 1.2
+  rotation 0 1 0 1.5708
+  children [
+    USE WALL_SHAPE
+  ]
+  name "solid(3)"
+  boundingObject USE WALL_SHAPE
+}
+TexturedBackgroundLight {
+  texture "empty_office"
+}
+small_or_fluffy {
+  translation 0 0.1 0.39
+}
+small_or_fluffy {
+  name "Fluffy"
+  translation 0 0.1 -0.4
+  color 0 1 0
+}

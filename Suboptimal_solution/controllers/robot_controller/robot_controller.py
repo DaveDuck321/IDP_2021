@@ -130,6 +130,9 @@ class RobotController:
             self.block_collection_controller = None
             self.drive_controller.halt()
 
+        if about_to_end == Tasks.BLOCK_COLLECTION:
+            self.pincer_controller.open_pincer()
+
     def __initialize_queued_task(self, about_to_end, about_to_start):
         """
             Runs when the next robot task is about to start.
@@ -142,6 +145,8 @@ class RobotController:
             self.drive_controller.halt()
         if about_to_start == Tasks.GRAB_BLOCK:
             self.pincer_controller.close_pincer()
+        if about_to_start == Tasks.SWITCH_BLOCK_TARGET:
+            self.pincer_controller.open_pincer()
         if about_to_start == Tasks.BLOCK_COLLECTION:
             self.block_collection_controller = BlockCollection(
                 self.robot.getName(),
