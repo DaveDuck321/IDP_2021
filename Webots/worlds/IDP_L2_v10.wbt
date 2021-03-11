@@ -18,8 +18,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.9984522397632521 -0.04319418518533099 0.03503408737102118 1.690326466983593
-  position -0.6221931290992901 7.553868620675221 -0.8493708472619295
+  orientation -0.3559118953215998 -0.8841301073213829 -0.30272211035282254 1.7777107580615084
+  position -3.2462682012400617 2.904450892435423 -0.27840065830606747
 }
 Background {
   skyColor [
@@ -32,12 +32,11 @@ Floor {
   }
 }
 target {
-  translation -0.72 0.05 -0.26
-  colour 0 1 0
+  translation -0.7396 0.05 1.0751
   name "target(1)"
 }
 target {
-  translation -0.72 0.05 0.8
+  translation 0.311 0.05 1.0743
   colour 0 1 0
   name "target(1)"
 }
@@ -69,29 +68,30 @@ Robot {
   controller "external_pc"
 }
 target {
-  translation 0.5 0.05 0.45
+  translation -0.9458 0.05 -0.0344
   colour 0 1 0
   name "target(2)"
 }
 target {
-  translation 0.5 0.05 -0.83
-  colour 0 1 0
+  translation -0.3839 0.05 0.42
   name "target(1)"
 }
 target {
-  translation 0.8 0.05 0.38
+  translation -0.8766 0.05 -0.8046
   name "target(1)"
 }
 target {
-  translation -0.41 0.04 -0.76
+  translation 0.9714 0.04 1.1059
   name "target(0)"
 }
 target {
-  translation 0.78 0.04 -0.44
+  translation -0.5205 0.04 0.7057
+  colour 0 1 0
   name "target(3)"
 }
 target {
-  translation -0.14 0.04 0.05
+  translation 0.1102 0.04 -0.8416
+  colour 0 1 0
   name "target(1)"
 }
 DEF Floor_colour Solid {
