@@ -114,8 +114,6 @@ def get_cluster_average(cluster_candidates, weights):
 
         # Mark this pixel to avoid repeated counting
         intense_coords[index] = True
-        # print(coord)
-        # print(strides)
         return list(reduce(
             lambda old, stride: np.concatenate((old, find_cluster_coords(coord + stride))),
             strides, coord
@@ -447,7 +445,6 @@ class MappingController:
 
             for cluster in clusters:
                 cluster_distance = util.get_distance(cluster.coord, block_location)
-                print(f"{cluster_distance}, {CLUSTER_PROXIMITY_THRESHOLD}")
 
                 if cluster_distance < CLUSTER_PROXIMITY_THRESHOLD:
                     if (cluster.color is not None):
@@ -456,7 +453,6 @@ class MappingController:
                     if color_consumed:
                         print("[Warning] The same blocks has been assigned to multiple clusters")
 
-                    print("Hopefully this works")
                     color_consumed = True
                     cluster.assign_known_color(index, block_color)
 
