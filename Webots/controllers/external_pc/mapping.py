@@ -39,7 +39,7 @@ def _ultrasound_pdf(mean, x):
 def _to_screenspace(coords):
     return np.clip(
         np.flip((coords + WORLD_BOUNDS) / (2 * WORLD_BOUNDS) * MAP_RESULTION),
-        (0, 0), MAP_RESULTION
+        (0, 0), (MAP_RESULTION[0] - 1, MAP_RESULTION[1] - 1)
     ).astype(int)
 
 
