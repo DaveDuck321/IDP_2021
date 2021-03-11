@@ -79,8 +79,6 @@ class RobotController:
         # Start with the pincer fully open
         self.pincer_controller.open_pincer()
 
-        self.get_color_data()
-
         self.queued_waypoints = []
 
     def send_new_scan(self):
@@ -92,10 +90,6 @@ class RobotController:
             self.positioning_system.get_distance_readings()
         )
         self.radio.send_message(message)
-
-    def get_color_data(self):
-        data = self.light.getValue()
-        # print("[LOG] Color data: ", data)
 
     def process_message(self, message):
         """
