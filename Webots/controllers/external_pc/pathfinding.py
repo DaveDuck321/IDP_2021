@@ -110,7 +110,7 @@ class PathfindingController:
         death_mask = death_mask | dilate(self.mask_delivered_blocks(arena_map), 7)
 
         # leave a safety margin around areas of "Do Not Travel"
-        arena_map = arena_map | dilate(arena_map, 7)
+        arena_map = arena_map | dilate(arena_map, 8)
 
         # remove the area around the current target location, to eliminate the block to pick
         # up from the mask of areas not to be traversed
@@ -122,7 +122,7 @@ class PathfindingController:
             # Dilate all other robot paths
             if other_name == robot_name:
                 continue
-            death_mask = death_mask | dilate(self.path_masks[other_name], 7)
+            death_mask = death_mask | dilate(self.path_masks[other_name], 8)
 
         self.send_to_display(arena_map)
         # explore the map with added heuristic until it is all explored or you have reached the goal
