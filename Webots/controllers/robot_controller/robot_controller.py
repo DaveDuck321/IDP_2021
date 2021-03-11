@@ -28,6 +28,7 @@ class Tasks(Enum):
     NAVIGATE_TO_WAYPOINT = 3
     GRAB_BLOCK = 4
     BLOCK_COLLECTION = 5
+    SWITCH_BLOCK_TARGET = 6
 
 
 class RobotController:
@@ -126,8 +127,10 @@ class RobotController:
         """
         if about_to_end == Tasks.NAVIGATE_TO_WAYPOINT:
             self.drive_controller.halt()
+
         if about_to_end == Tasks.BLOCK_COLLECTION:
             self.block_collection_controller = None
+            self.drive_controller.halt()
 
     def __initialize_queued_task(self, about_to_end, about_to_start):
         """
@@ -197,8 +200,19 @@ class RobotController:
                 self.queued_task = Tasks.BLOCK_COLLECTION
 
         elif self.current_task == Tasks.BLOCK_COLLECTION:
-            if self.block_collection_controller():
-                self.queued_task = Tasks.STATIONARY_SCAN
+            result = self.block_collection_controller()
+            if result == BlockCollection.IN_PROGRESS:
+                pass
+
+            elif result == BlockCollection.BLOCK_IGNORED:
+                self.queued_task = Tasks.SWITCH_BLOCK_TARGET
+
+            else:
+                raise NotImplementedError()
+
+        elif self.current_task == Tasks.SWITCH_BLOCK_TARGET:
+            # Immediately switch the task back to block collection
+            self.queued_task = Tasks.BLOCK_COLLECTION
 
         elif self.current_task == Tasks.NONE:
             pass  # TODO: maybe query controller here

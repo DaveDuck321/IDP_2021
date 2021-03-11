@@ -4,10 +4,14 @@ from common import util
 
 BLOCK_OVERSHOOT = 0.05
 BLOCK_IN_GRABBER_READING = 0.24
-ROBOT_PINCER_OFFSET = 0.08
+ROBOT_PINCER_OFFSET = 0.04
 
 
 class BlockCollection:
+    IN_PROGRESS = 0
+    BLOCK_PICKED_UP = 1
+    BLOCK_IGNORED = 2
+
     def __init__(self, robot_name, drive_controller, positioning_system,
                  pincer_controller, light, radio, IR_sensor):
 
@@ -49,19 +53,21 @@ class BlockCollection:
 
     def drive_to_block(self):
         if not self.drive_controller.has_waypoints():
-            return False
+            return self.IN_PROGRESS
 
         if self.drive_controller.navigate_waypoints(self.positioning_system):
             self.cur_step = self.face_block
-        return False
+
+        return self.IN_PROGRESS
 
     def face_block(self):
         if self.__block_pos is None:
-            return False
+            return self.IN_PROGRESS
         if self.drive_controller.turn_toward_point(self.positioning_system, self.__block_pos):
             self.__starting_pos = self.positioning_system.get_2D_position()
             self.cur_step = self.inspect_block
-        return False
+
+        return self.IN_PROGRESS
 
     def inspect_block(self):
         IR_dist = self.IR_sensor.get_distance()
@@ -74,7 +80,8 @@ class BlockCollection:
             self.min_IR_dist = (IR_dist, self.positioning_system.get_world_bearing())
             self.cur_step = self.IR_search_setup
             print("IR_search_setup")
-        return False
+
+        return self.IN_PROGRESS
 
     def IR_search_setup(self):
         if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.target_bearing):
@@ -87,7 +94,8 @@ class BlockCollection:
             # Hackfix IR readings
             IR_dist = self.IR_sensor.get_distance()
             self.rolling_IR_Readings = [IR_dist] * 3
-        return False
+
+        return self.IN_PROGRESS
 
     def IR_search(self):
         self.rolling_IR_Readings.append(self.IR_sensor.get_distance())
@@ -107,6 +115,8 @@ class BlockCollection:
             )
             self.drive_controller.set_waypoints([self.__block_pos])
             self.cur_step = self.drive_over_block
+
+        return self.IN_PROGRESS
 
     def drive_over_block(self):
         """
@@ -130,7 +140,7 @@ class BlockCollection:
             self.pincer_controller.close_pincer()
             self.cur_step = lambda: self.wait_for_pincer(self.scan_block_color)
 
-        return False
+        return self.IN_PROGRESS
 
     def scan_block_color(self):
         self.drive_controller.waypoints_locked = True
@@ -163,7 +173,8 @@ class BlockCollection:
         )
         self.radio.send_message(message)
         self.cur_step = lambda: self.wait_for_pincer(self.reverse_away)
-        return False
+
+        return self.IN_PROGRESS
 
     def wait_for_pincer(self, next_func):
         self.drive_controller.halt()
@@ -171,7 +182,8 @@ class BlockCollection:
         if self.wait_for_pincer_index == 50:
             self.wait_for_pincer_index = 0
             self.cur_step = next_func
-        return False
+
+        return self.IN_PROGRESS
 
     def reverse_away(self):
         self.drive_controller.set_waypoints([self.__starting_pos])
@@ -179,24 +191,28 @@ class BlockCollection:
             self.drive_controller.waypoints_locked = False
             if self.block_collected:
                 self.cur_step = self.return_to_base
-                return False
+                return self.IN_PROGRESS
             else:
-                return True
+                return self.BLOCK_IGNORED
+
+        return self.IN_PROGRESS
 
     def return_to_base(self):
         if not self.drive_controller.has_waypoints():
-            return False
+            return self.IN_PROGRESS
 
         if self.drive_controller.navigate_waypoints(self.positioning_system):
             self.cur_step = self.face_dropoff_area
-        return False
+
+        return self.IN_PROGRESS
 
     def face_dropoff_area(self):
         if self.drive_controller.turn_toward_point(self.positioning_system, self.__block_pos):
             self.__starting_pos = self.positioning_system.get_2D_position()
             self.drive_controller.set_waypoints([self.__block_pos])
             self.cur_step = self.drive_to_dropoff
-        return False
+
+        return self.IN_PROGRESS
 
     def drive_to_dropoff(self):
         if self.drive_controller.navigate_waypoints(self.positioning_system):
@@ -204,4 +220,5 @@ class BlockCollection:
             self.block_collected = False
             self.drive_controller.set_waypoints([self.__starting_pos])
             self.cur_step = lambda: self.wait_for_pincer(self.reverse_away)
-        return False
+
+        return self.IN_PROGRESS
