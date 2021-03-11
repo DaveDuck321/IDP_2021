@@ -95,6 +95,8 @@ class ExternalController:
 
         elif isinstance(message, protocol.ReportBlockDropoff):
             self.mapping_controller.add_drop_off_region(message.block_position)
+            if self.pathfinding_controller.number_returned[message.robot_name] == 4:
+                self.radio.send_message(protocol.KillImmediately(message.robot_name))
         else:
             raise NotImplementedError()
 

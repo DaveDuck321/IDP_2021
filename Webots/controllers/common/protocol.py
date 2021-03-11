@@ -137,12 +137,28 @@ class WaypointList(Message):
         return cls(json_data["robot_name"], json_data["waypoints"])
 
 
+class KillImmediately(Message):
+    def __init__(self, robot_name):
+        Message.__init__(self, robot_name)
+
+    @staticmethod
+    def get_type():
+        return "kill_immediately"
+
+    @classmethod
+    def build_from_JSON(cls, json_data):
+        assert json_data["type"] == cls.get_type()
+
+        return cls(json_data["robot_name"])
+
+
 MESSAGE_MAPPINGS = {
     ScanDistanceReading.get_type(): ScanDistanceReading,
     WaypointList.get_type(): WaypointList,
     BlockScanResult.get_type(): BlockScanResult,
     AskForBlockPath.get_type(): AskForBlockPath,
     ReportBlockDropoff.get_type(): ReportBlockDropoff,
+    KillImmediately.get_type(): KillImmediately,
 }
 
 

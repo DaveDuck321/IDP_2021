@@ -97,6 +97,8 @@ class RobotController:
         """
         if isinstance(message, protocol.WaypointList):
             self.queued_waypoints.append(message.waypoints)
+        elif isinstance(message, protocol.KillImmediately):
+            self.queued_task = Tasks.NONE
         else:
             raise NotImplementedError()
 
