@@ -1,5 +1,6 @@
 from common import util
 from controller import Display
+import mapping
 
 import numpy as np
 from queue import PriorityQueue
@@ -21,7 +22,7 @@ def dilate(grid, iterations):
 
 
 class PathfindingController:
-    def __init__(self, display_pathfinding, arena_shape=(240, 240)):
+    def __init__(self, display_pathfinding, arena_shape=(121, 121)):
 
         self.robots_spawn = {
             "Fluffy": (0.0, -0.28),
@@ -62,13 +63,13 @@ class PathfindingController:
         self._display_pathfinding.imageDelete(image)
 
     def grid_to_world_coord(self, coords):
-        coords = ((coords[0] - self.arena_shape[0] / 2.0) / 100.0,
-                  (coords[1] - self.arena_shape[1] / 2.0) / 100.0)
+        coords = ((coords[0] - self.arena_shape[0] / 2.0) / mapping.WORLD_RESOLUTION,
+                  (coords[1] - self.arena_shape[1] / 2.0) / mapping.WORLD_RESOLUTION)
         return coords
 
     def world_to_grid_coords(self, coords):
-        coords = (int(coords[0] * 100.0 + 0.5 + self.arena_shape[0] / 2.0),
-                  int(coords[1] * 100.0 + 0.5 + self.arena_shape[1] / 2.0))
+        coords = (int(coords[0] * mapping.WORLD_RESOLUTION + 0.5 + self.arena_shape[0] / 2.0),
+                  int(coords[1] * mapping.WORLD_RESOLUTION + 0.5 + self.arena_shape[1] / 2.0))
         return coords
 
     def mask_delivered_blocks(self, arena_map):
@@ -108,19 +109,19 @@ class PathfindingController:
         arena_map = arena_map | self.mask_delivered_blocks(arena_map)
 
         # leave a safety margin around areas of "Do Not Travel"
-        arena_map = arena_map | dilate(arena_map, 12)
+        arena_map = arena_map | dilate(arena_map, 6)
 
         # remove the area around the current target location, to eliminate the block to pick
         # up from the mask of areas not to be traversed
-        arena_map[max(0, goal[0] - 20): min(arena_map.shape[0] - 1, goal[0] + 20),
-                  max(0, goal[1] - 20): min(arena_map.shape[1] - 1, goal[1] + 20)] = False
+        arena_map[max(0, goal[0] - 10): min(arena_map.shape[0] - 1, goal[0] + 10),
+                  max(0, goal[1] - 10): min(arena_map.shape[1] - 1, goal[1] + 10)] = False
 
         # add the paths of the other robot to the "Do Not Travel" areas
         for other_name in self.path_masks:
             # Dilate all other robot paths
             if other_name == robot_name:
                 continue
-            arena_map = arena_map | dilate(self.path_masks[other_name], 10)
+            arena_map = arena_map | dilate(self.path_masks[other_name], 5)
 
         self.send_to_display(arena_map)
         # explore the map with added heuristic until it is all explored or you have reached the goal
@@ -169,9 +170,9 @@ class PathfindingController:
             cur_z -= walks[direction][1]
 
             goal_dist = distances[goal] - distances[cur_x, cur_z]
-            if 4 < goal_dist < 6:
+            if 3 < goal_dist < 5:
                 release_pos = self.grid_to_world_coord((cur_x, cur_z))
-            if 15.0 < goal_dist < 17:
+            if 7.0 < goal_dist < 9:
                 waypoints = [self.grid_to_world_coord((cur_x, cur_z))]
             path_mask[cur_x, cur_z] = 1
             if directions[cur_x, cur_z] != direction:

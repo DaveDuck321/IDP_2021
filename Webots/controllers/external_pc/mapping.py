@@ -9,13 +9,14 @@ import itertools
 
 ARM_LENGTH = 0.15  # 150 mm
 BLOCK_WIDTH = 6  # In px
+BLOCK_OBSTACLE_WIDTH = 0.1
 ROBOT_RADIUS = 1.4 * ARM_LENGTH
 ULTRASOUND_MINIMUM_READING = 0.1
 ULTRASOUND_RANGE = 1.3  # 1.3 m
 ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 3 cm
 ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 degrees total FOV
 WORLD_BOUNDS = np.array([1.2 - 0.01, 1.2 - 0.01])  # UPDATE THIS WITH WORLD FILE
-WORLD_RESOLUTION = 100  # px per meter (reduce for faster computation)
+WORLD_RESOLUTION = 50  # px per meter (reduce for faster computation)
 MAP_RESULTION = (
     int(2 * WORLD_RESOLUTION * WORLD_BOUNDS[0]),
     int(2 * WORLD_RESOLUTION * WORLD_BOUNDS[1])
@@ -247,10 +248,22 @@ class MappingController:
         self.__robot_positions_ref = robot_positions_ref
         self.__last_sensor_positions = {}
 
+        # Cache for performance
+        self.invalid_cache()
+
+    def invalid_cache(self):
+        """
+            Should be run every time more information is learned about the world
+        """
+        self.__cache_occupancy_map = None
+        self.__cache_block_locations = None
+        self.__cache_clear_movement_map = None
+
     def update_with_color_reading(self, block_location, block_color):
         """
             A robot has just read a block color, log this block position to the world map.
         """
+        self.invalid_cache()
         self._confirmed_blocks.append((block_location, block_color))
 
     def update_with_scan_result(self, robot_name, robot_bearing, arm_angle, sensor_readings):
@@ -258,6 +271,7 @@ class MappingController:
             Processes a pair of sensor measurements and updates the internal probability maps based on the reading.
             It is assumed that these sensor lie on either end of the robot's arm.
         """
+        self.invalid_cache()
         robot_position = self.__robot_positions_ref[robot_name]
 
         sensor_bearings = (
@@ -275,7 +289,7 @@ class MappingController:
             if other_robot != robot_name]
 
         other_robot_radius = [ROBOT_RADIUS] * len(other_robot_pos)
-        obstacle_radius = [BLOCK_WIDTH] * len(self._dropped_blocks)
+        obstacle_radius = [BLOCK_OBSTACLE_WIDTH] * len(self._dropped_blocks)
 
         for pos, bearing, reading in zip(sensor_positions, sensor_bearings, sensor_readings):
             self.update_with_distance(
@@ -290,6 +304,7 @@ class MappingController:
         """
             The block has been dropped off. Block should be excluded from all future scans.
         """
+        self.invalid_cache()
         self._dropped_blocks.append(position)
 
     def invalid_region(self, position):
@@ -297,6 +312,7 @@ class MappingController:
             Invalidates the region surrounding a single block.
             This should be used after the robot changes the environment for an reason.
         """
+        self.invalid_cache()
         invalidation_size = INVALIDATION_REGION / 2
 
         for cluster in self.predict_block_locations():
@@ -325,6 +341,8 @@ class MappingController:
         """
             Processes a single distance measurement: updating the internal probability maps based on the reading.
         """
+        self.invalid_cache()
+
         if detected_distance < ULTRASOUND_MINIMUM_READING:
             return  # This is probably noise, ignore it
 
@@ -385,6 +403,9 @@ class MappingController:
             self._probability_count += np.where(fov_range, 1, 0)
 
     def predict_block_locations(self):
+        if self.__cache_block_locations is not None:
+            return self.__cache_block_locations
+
         GRID_SIZE = (
             int(MAP_RESULTION[0] / 5),
             int(MAP_RESULTION[1] / 5)
@@ -440,7 +461,8 @@ class MappingController:
                 # print("[Warning] Block color has been identified but does not exist on map")
                 closest_cluster.cluster.assign_known_color(index, block_color)
 
-        return clusters
+        self.__cache_block_locations = clusters
+        return self.__cache_block_locations
 
     def get_clear_movement_map(self):
         """
@@ -449,6 +471,9 @@ class MappingController:
                 its been explored and nothing was found.
             NOTE: This does not account for robot width, take care
         """
+        if self.__cache_clear_movement_map is not None:
+            return self.__cache_clear_movement_map
+
         clear_movement_map = np.logical_and(
             self.get_explore_status_map(),
             self.get_occupancy_map() < 0.005
@@ -460,7 +485,8 @@ class MappingController:
             max_coord = coord + BLOCK_WIDTH // 2
             clear_movement_map[min_coord[0]: max_coord[0], min_coord[1]: max_coord[1]] = False
 
-        return clear_movement_map
+        self.__cache_clear_movement_map = clear_movement_map
+        return self.__cache_clear_movement_map
 
     def get_explore_status_map(self):
         """
@@ -475,12 +501,15 @@ class MappingController:
             1 - Certainly contains a object
             0 - Either unexplored or empty
         """
+        if self.__cache_occupancy_map is not None:
+            return self.__cache_occupancy_map
 
         # Normalize all probabilities according to the number of votes
         probabilities = self._probability_sum / self._probability_count
         max_probability_intensity = max(np.amax(probabilities), 0.1)
 
-        return self._probability_mask * (probabilities / max_probability_intensity)
+        self.__cache_occupancy_map = self._probability_mask * (probabilities / max_probability_intensity)
+        return self.__cache_occupancy_map
 
     def output_to_displays(self):
         occupancy_map = get_intensity_map_pixels(self.get_occupancy_map())
@@ -506,11 +535,12 @@ class MappingController:
         self._display_occupancy.imagePaste(image, 0, 0, False)
         self._display_occupancy.imageDelete(image)
 
+        # Display block locations on this map
+        block_locations = self.predict_block_locations()
+
         # Output movement status map, marking block locations
         movement_status = get_intensity_map_pixels(self.get_clear_movement_map())
 
-        # Also output block locations on this map
-        block_locations = self.predict_block_locations()
         for block_location in block_locations:
             coord = _to_screenspace(block_location.coord)
             if block_location.color is None:
