@@ -74,6 +74,7 @@ class BlockCollection:
         if IR_dist is not None and IR_dist < 0.3:
             self.drive_controller.set_waypoints([self.__block_pos])
             self.cur_step = self.drive_over_block
+            self.rolling_IR_Readings = [IR_dist] * 3
             print("drive over block")
         elif IR_dist is not None and IR_dist >= 0.3:
             self.target_bearing = (self.positioning_system.get_world_bearing() + math.pi / 6.0) % (2 * math.pi)
