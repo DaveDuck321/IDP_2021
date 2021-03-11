@@ -4,7 +4,7 @@
 import sys
 sys.path.append("..")
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 from controller import Robot
 from common.communication import Radio
@@ -17,8 +17,6 @@ import numpy as np
 ROBOT_TAKEOVER_DISTANCE = 0.2
 
 TIME_STEP = 1
-APPROXIMATE_POSITION = 0.1  # 10cm
-NO_TURNING_BACK_REGION = 0.5  # 50cm
 RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block"])
 
 
@@ -28,6 +26,7 @@ class ExternalController:
 
         # Current robot positions and status, this is a RobotState object
         self.robot_states = {}
+        self.robot_dropoffs = defaultdict(int)
 
         # Controller IO
         self.radio = Radio(
@@ -43,8 +42,6 @@ class ExternalController:
             self.robot.getDevice("display_explored"),
             self.robot.getDevice("display_occupancy")
         )
-
-        self.pathfinding_controller = PathfindingController(self.robot.getDevice("display_pathfinding"))
 
     def process_message(self, message):
         if isinstance(message, protocol.ScanDistanceReading):
@@ -63,41 +60,17 @@ class ExternalController:
                 message.distance_readings
             )
 
-        elif isinstance(message, protocol.BlockScanResult):
-            arena_map = self.mapping_controller.get_clear_movement_map()
-            robot_name, robot_pos = message.robot_name, message.robot_position
-            # print(f"Scan result controller, block color: {message.color}")
-
-            if message.is_moving_block:
-                # Block has been successfully picked up, inform the mapping program
-                self.mapping_controller.invalid_region(message.block_position)
-
-                # Send the robot direction back to base
-                waypoint_path, block_release_pos = \
-                    self.pathfinding_controller.get_dropoff_path(
-                        arena_map, robot_pos, robot_name
-                    )
-
-                message = protocol.WaypointList(robot_name, waypoint_path + [block_release_pos])
-                self.radio.send_message(message)
-            else:
-                # print("Update color reading ", message.color)
-                self.mapping_controller.update_with_color_reading(message.block_position, message.color)
-
-                cluster_position = self.mapping_controller.predict_block_locations()
-
-                shortest_path = self.pathfinding_controller.get_nearest_block_path(
-                    robot_name, arena_map,
-                    cluster_position, robot_pos
-                )
-
-                self.robot_targets[message.robot_name] = RobotTarget(shortest_path.goal_pos, True)
-                message = protocol.WaypointList(robot_name, shortest_path.waypoint_path + [shortest_path.release_pos])
-                self.radio.send_message(message)
+        elif isinstance(message, protocol.ReportIncorrectColor):
+            # The robot failed to pickup block due to its color, report this
+            self.mapping_controller.update_with_color_reading(message.block_position, message.color)
 
         elif isinstance(message, protocol.ReportBlockDropoff):
             self.mapping_controller.add_drop_off_region(message.block_position)
-            if self.pathfinding_controller.number_returned[message.robot_name] == 4:
+            self.robot_dropoffs += 1
+
+            # Kill robot if it has just dropped off its block
+            # The robot is guaranteed to be in the correct place
+            if self.robot_dropoffs == 4:
                 self.radio.send_message(protocol.KillImmediately(message.robot_name))
         else:
             raise NotImplementedError()
@@ -110,11 +83,13 @@ class ExternalController:
         for message in self.radio.get_messages():
             self.process_message(message)
 
-    def choose_action_for_robot(self, robot_name):
-        # Navigate towards nearest block
-        block_locations = self.mapping_controller.predict_block_locations()
+    def request_block_collection(self, robot_name):
+        """
+            Find the closest block of the correct color, ask the robot to drive towards it.
+            If the robot is close enough for mapping to be useless, let the robot takeover.
+        """
 
-        # Find the closest block of the correct color
+        block_locations = self.mapping_controller.predict_block_locations()
         closest_block = (np.inf, np.inf)
         for cluster in block_locations:
             # Check, is known to be the other color
@@ -132,6 +107,11 @@ class ExternalController:
         else:
             # Send the robot its new target position (TODO prevent collisions)
             self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_block))
+
+    def choose_action_for_robot(self, robot_name):
+        if not self.robot_states[robot_name].holding_block:
+            # Robot is available, ask it to find a block
+            self.request_block_collection(robot_name)
 
     def tick(self):
         # Check for robot messages, take an necessary actions

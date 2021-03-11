@@ -1,7 +1,5 @@
 """ Defines the messages that may be sent over the radio """
 
-from common import util
-
 
 class Message:
     def __init__(self, robot_name):
@@ -24,17 +22,15 @@ class Message:
 # ---------------------------------
 
 
-class BlockScanResult(Message):
-    def __init__(self, robot_name, robot_position, block_position, color, is_moving_block):
+class ReportIncorrectColor(Message):
+    def __init__(self, robot_name, block_position, color):
         Message.__init__(self, robot_name)
-        self.robot_position = util.filter_nans(robot_position)
         self.block_position = block_position
         self.color = color
-        self.is_moving_block = is_moving_block
 
     @staticmethod
     def get_type():
-        return "block_scan_result"
+        return "report_incorrect_color"
 
     @classmethod
     def build_from_JSON(cls, json_data):
@@ -42,8 +38,7 @@ class BlockScanResult(Message):
 
         return cls(
             json_data["robot_name"],
-            json_data["robot_position"], json_data["block_position"],
-            json_data["color"], json_data["is_moving_block"]
+            json_data["block_position"], json_data["color"]
         )
 
 
@@ -149,7 +144,7 @@ class KillImmediately(Message):
 MESSAGE_MAPPINGS = {
     # Robot
     ScanDistanceReading.get_type(): ScanDistanceReading,
-    BlockScanResult.get_type(): BlockScanResult,
+    ReportIncorrectColor.get_type(): ReportIncorrectColor,
     ReportBlockDropoff.get_type(): ReportBlockDropoff,
 
     # Controller
