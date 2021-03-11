@@ -71,11 +71,11 @@ def get_static_distance(sensor_pos, sensor_facing, obstacles_pos, obstacles_radi
 
     combined_array = np.array([dist_right, dist_left, dist_top, dist_bottom])
 
-    # Collisions with other robots and static obsticles
+    # Collisions with other robots and static obstacles
     for obstacle_pos, obstacle_radius in zip(obstacles_pos, obstacles_radius):
         a = x_dir ** 2 + y_dir ** 2
         b = 2 * x_dir * (sensor_pos[0] - obstacle_pos[0]) + 2 * y_dir * (sensor_pos[1] - obstacle_pos[1])
-        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - obstacles_radius**2
+        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - obstacle_radius**2
 
         # Filter invalid values
         determinant = b**2 - 4 * a * c
