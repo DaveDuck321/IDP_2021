@@ -107,7 +107,6 @@ class ExternalController:
             self.process_message(message)
 
     def tick(self):
-        self.tick_hack += 1
         # Check for robot messages, take an necessary actions
         self.process_robot_messages()
         self.mapping_controller.output_to_displays()
