@@ -63,12 +63,17 @@ class ExternalController:
 
             message = protocol.WaypointList(robot_name, waypoint_path + [block_release_pos])
             self.radio.send_message(message)
+
         elif isinstance(message, protocol.BlockScanResult):
             arena_map = self.mapping_controller.get_clear_movement_map()
             robot_name, robot_pos = message.robot_name, message.robot_position
             print(f"Scan result controller, block color: {message.color}")
 
             if message.is_moving_block:
+                # Block has been successfully picked up, inform the mapping program
+                self.mapping_controller.invalid_region(message.block_position)
+
+                # Send the robot direction back to base
                 waypoint_path, block_release_pos = \
                     self.pathfinding_controller.get_dropoff_path(
                         arena_map, robot_pos, robot_name

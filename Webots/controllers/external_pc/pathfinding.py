@@ -214,6 +214,8 @@ class PathfindingController:
         """
             Returns a list of tuples (x, z) in world coordinate system for robot path back to base, together with
             location for BlockCollection release.
+
+            Note: ONLY CALL ONCE PER BLOCK
         """
         print("calculating path back to base")
         arena_map = np.swapaxes(arena_map, 0, 1)
@@ -234,5 +236,5 @@ class PathfindingController:
         block_release_pos = self.dropoff_locations[robot_name][self.number_returned[robot_name]]
         self.path_masks[robot_name] = path_mask
 
-        # self.send_to_display(arena_map_with_border)
+        self.number_returned[robot_name] += 1
         return waypoints, block_release_pos

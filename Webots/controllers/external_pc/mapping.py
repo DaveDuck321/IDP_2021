@@ -6,6 +6,7 @@ import itertools
 
 ARM_LENGTH = 0.15  # 150 mm
 ROBOT_RADIUS = 1.4 * ARM_LENGTH
+ULTRASOUND_MINIMUM_READING = 0.1
 ULTRASOUND_RANGE = 1.3  # 1.3 m
 ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 3 cm
 ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 degrees total FOV
@@ -16,6 +17,8 @@ MAP_RESULTION = (
     int(2 * WORLD_RESOLUTION * WORLD_BOUNDS[1])
 )
 
+# Region what will be invalidated when a block is collected
+INVALIDATION_REGION = ROBOT_RADIUS
 CLUSTER_BLOCK_OVERLAP = 0.8
 CLUSTER_OVERLAP_THRESHOLD = 0.8
 CLUSTER_THRESHOLD = 10  # Require 10px to recognize block
@@ -28,7 +31,10 @@ def _ultrasound_pdf(mean, x):
 
 
 def _to_screenspace(coords):
-    return np.flip((coords + WORLD_BOUNDS) / (2 * WORLD_BOUNDS) * MAP_RESULTION).astype(int)
+    return np.clip(
+        np.flip((coords + WORLD_BOUNDS) / (2 * WORLD_BOUNDS) * MAP_RESULTION),
+        (0, 0), MAP_RESULTION
+    ).astype(int)
 
 
 def _to_worldspace(_coords):
@@ -184,11 +190,16 @@ class ClusterLocation:
         This can be merged with nearby block locations to remove noise.
     """
 
-    def __init__(self, coord, area, total_weight, radius, color=None):
+    def __init__(self, coord, area, total_weight, radius):
         self.coord = coord
         self.area = area
         self.total_weight = total_weight
         self.radius = radius
+        self.color = None
+        self.known_index = None
+
+    def assign_known_color(self, known_index, color):
+        self.known_index = known_index
         self.color = color
 
     def merge_cluster(self, other):
@@ -264,10 +275,42 @@ class MappingController:
         # Save this info for the visualization
         self.__last_sensor_positions[robot_name] = sensor_positions
 
+    def invalid_region(self, position):
+        """
+            Invalidates the region surrounding a single block.
+            This should be used after the robot changes the environment for an reason.
+        """
+        invalidation_size = INVALIDATION_REGION / 2
+
+        for cluster in self.predict_block_locations():
+            if util.get_distance(cluster.coord, position) < cluster.radius:
+                invalidation_size = max(invalidation_size, cluster.radius)
+                if(cluster.known_index is not None):
+                    print("[info] Block in invalidation cluster, removing")
+                    self._confirmed_blocks.pop(cluster.known_index)
+
+        # Also delete overlapping blocks if they are not in a cluster
+        for index in range(len(self._confirmed_blocks) - 1, 0, -1):
+            block_pos, _ = self._confirmed_blocks[index]
+            if util.get_distance(block_pos, position) < invalidation_size:
+                # Purge this block
+                print("[info] Block in invalidation region, removing")
+                self._confirmed_blocks.pop(index)
+
+        invalid_min = _to_screenspace(np.array(position) - invalidation_size)
+        invalid_max = _to_screenspace(np.array(position) + invalidation_size)
+        invalid_size = tuple(invalid_max - invalid_min)
+
+        self._probability_sum[invalid_min[0]:invalid_max[0], invalid_min[1]:invalid_max[1]] = np.zeros(invalid_size)
+        self._probability_count[invalid_min[0]:invalid_max[0], invalid_min[1]:invalid_max[1]] = np.ones(invalid_size)
+
     def update_with_distance(self, detected_distance, measurement_angle, scan_position, obstacles_pos):
         """
             Processes a single distance measurement: updating the internal probability maps based on the reading.
         """
+        if detected_distance < ULTRASOUND_MINIMUM_READING:
+            return  # This is probably noise, ignore it
+
         # Find guaranteed block angle: hlh detected
         pass  # to be implemented
 
@@ -346,7 +389,7 @@ class MappingController:
         clusters = get_cluster_average(cluster_candidates, occupancy_map)
 
         # Some block colors are known, mark these in the clusters object
-        for (block_location, block_color) in self._confirmed_blocks:
+        for index, (block_location, block_color) in enumerate(self._confirmed_blocks):
             # Check if block is in radius of any clusters
             color_consumed = False
             for cluster in clusters:
@@ -358,7 +401,7 @@ class MappingController:
                         print("[Warning] The same blocks has been assigned to multiple clusters")
 
                     color_consumed = True
-                    cluster.color = block_color
+                    cluster.assign_known_color(index, block_color)
 
             if not color_consumed:
                 print("[Warning] Block color has been identified but does not exist on map")
