@@ -1,7 +1,10 @@
 from controller import Display
 from common import util
+
 import numpy as np
+
 from functools import reduce
+from collections import namedtuple
 import itertools
 
 ARM_LENGTH = 0.15  # 150 mm
@@ -367,7 +370,7 @@ class MappingController:
             # Now mark this on a fuzzy probability map
 
             # Account for potential FOV distortion
-            # Note: due to this, statistical values are purely relative
+            # NOTE: due to this, statistical values are purely relative
 
             fov_range = np.logical_and(
                 bearings < ULTRASOUND_ANGLE,
@@ -408,8 +411,15 @@ class MappingController:
         for index, (block_location, block_color) in enumerate(self._confirmed_blocks):
             # Check if block is in radius of any clusters
             color_consumed = False
+
+            # NOTE: this is a back hackfix
+            ClosestCluster = namedtuple("ClosestBlock", ["distance", "cluster"])
+            closest_cluster = ClosestCluster(np.inf, None)
+
             for cluster in clusters:
-                if util.get_distance(cluster.coord, block_location) < CLUSTER_BLOCK_OVERLAP * cluster.radius:
+                cluster_distance = util.get_distance(cluster.coord, block_location)
+
+                if cluster_distance < CLUSTER_BLOCK_OVERLAP * cluster.radius:
                     if (cluster.color is not None):
                         print("[Warning] Multiple blocks identified in the same cluster")
 
@@ -419,8 +429,16 @@ class MappingController:
                     color_consumed = True
                     cluster.assign_known_color(index, block_color)
 
+                if cluster_distance < closest_cluster.distance:
+                    closest_cluster = ClosestCluster(
+                        cluster_distance,
+                        cluster
+                    )
+
             if not color_consumed:
-                print("[Warning] Block color has been identified but does not exist on map")
+                # Hackfix, no cluster identified properly, assign to closest one
+                # print("[Warning] Block color has been identified but does not exist on map")
+                closest_cluster.cluster.assign_known_color(index, block_color)
 
         return clusters
 
