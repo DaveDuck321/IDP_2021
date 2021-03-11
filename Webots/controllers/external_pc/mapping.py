@@ -346,11 +346,11 @@ class MappingController:
         clusters = get_cluster_average(cluster_candidates, occupancy_map)
 
         # Some block colors are known, mark these in the clusters object
-        for block in self._confirmed_blocks:
+        for (block_location, block_color) in self._confirmed_blocks:
             # Check if block is in radius of any clusters
             color_consumed = False
             for cluster in clusters:
-                if util.get_distance(cluster.coord, block[0]) < CLUSTER_BLOCK_OVERLAP * cluster.radius:
+                if util.get_distance(cluster.coord, block_location) < CLUSTER_BLOCK_OVERLAP * cluster.radius:
                     if (cluster.color is not None):
                         print("[Warning] Multiple blocks identified in the same cluster")
 
@@ -358,7 +358,10 @@ class MappingController:
                         print("[Warning] The same blocks has been assigned to multiple clusters")
 
                     color_consumed = True
-                    cluster.color = block[1]
+                    cluster.color = block_color
+
+            if not color_consumed:
+                print("[Warning] Block color has been identified but does not exist on map")
 
         return clusters
 
@@ -433,6 +436,12 @@ class MappingController:
                 block_color = (0, 255, 0)
 
             movement_status[coord[0], coord[1], :] = block_color
+
+        # Output confirmed block positions
+        for (block_location, _) in self._confirmed_blocks:
+            print(block_location)
+            coord = _to_screenspace(block_location)
+            movement_status[coord[0], coord[1], :] = (255, 0, 255)
 
         image = self._display_explored.imageNew(
             movement_status.tobytes(),

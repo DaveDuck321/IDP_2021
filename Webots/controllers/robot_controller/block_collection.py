@@ -30,16 +30,11 @@ class BlockCollection:
         self.min_IR_dist = (float('inf'), 0.0)
         self.cur_step = self.drive_to_block
 
-        print(self.robot_name)
-        message = protocol.BlockScanResult(
+        # The controller should give the robot a new target now
+        self.radio.send_message(protocol.AskForBlockPath(
             self.robot_name,
             self.positioning_system.get_2D_position(),
-            self.positioning_system.get_2D_position(),
-            self.__block_color,
-            self.block_collected
-        )
-        print(message)
-        self.radio.send_message(message)
+        ))
 
     def __call__(self):
         return self.cur_step()
@@ -132,7 +127,7 @@ class BlockCollection:
     def scan_block_color(self):
         self.drive_controller.halt()
         data = self.light.getValue()
-        if data > 500:  # completely arbitrary threshold, as Electronics for the real one
+        if data > 500:  # completely arbitrary threshold, ask Electronics for the real one
             print("Identified Green Block")
             if self.__block_color is not None and self.__block_color != "green":
                 raise Exception("Detected green, was told it was red")

@@ -47,6 +47,25 @@ class BlockScanResult(Message):
         )
 
 
+class AskForBlockPath(Message):
+    def __init__(self, robot_name, robot_position):
+        Message.__init__(self, robot_name)
+        self.robot_position = util.filter_nans(robot_position)
+
+    @staticmethod
+    def get_type():
+        return "ask_for_block_path"
+
+    @classmethod
+    def build_from_JSON(cls, json_data):
+        assert json_data["type"] == cls.get_type()
+
+        return cls(
+            json_data["robot_name"],
+            json_data["robot_position"]
+        )
+
+
 class ScanDistanceReading(Message):
     def __init__(self, robot_name, robot_position, robot_bearing,
                  arm_angle, distance_readings):
@@ -101,6 +120,7 @@ MESSAGE_MAPPINGS = {
     ScanDistanceReading.get_type(): ScanDistanceReading,
     WaypointList.get_type(): WaypointList,
     BlockScanResult.get_type(): BlockScanResult,
+    AskForBlockPath.get_type(): AskForBlockPath,
 }
 
 

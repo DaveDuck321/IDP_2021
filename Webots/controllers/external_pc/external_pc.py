@@ -49,9 +49,24 @@ class ExternalController:
                 message.arm_angle,
                 message.distance_readings
             )
+        elif isinstance(message, protocol.AskForBlockPath):
+            arena_map = self.mapping_controller.get_clear_movement_map()
+            robot_name, robot_pos = message.robot_name, message.robot_position
+
+            cluster_position = self.mapping_controller.predict_block_locations()
+
+            waypoint_path, block_release_pos = \
+                self.pathfinding_controller.get_nearest_block_path(
+                    robot_name, arena_map,
+                    cluster_position, robot_pos
+                )
+
+            message = protocol.WaypointList(robot_name, waypoint_path + [block_release_pos])
+            self.radio.send_message(message)
         elif isinstance(message, protocol.BlockScanResult):
             arena_map = self.mapping_controller.get_clear_movement_map()
             robot_name, robot_pos = message.robot_name, message.robot_position
+            print(f"Scan result controller, block color: {message.color}")
 
             if message.is_moving_block:
                 waypoint_path, block_release_pos = \
@@ -59,6 +74,7 @@ class ExternalController:
                         arena_map, robot_pos, robot_name
                     )
             else:
+                print("Update color reading ", message.color)
                 self.mapping_controller.update_with_color_reading(message.block_position, message.color)
 
                 cluster_position = self.mapping_controller.predict_block_locations()
