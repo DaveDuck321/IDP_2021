@@ -37,7 +37,7 @@ class ExternalController:
             self.robot.getDevice("display_occupancy")
         )
 
-        self.pathfinding_controller = PathfindingController()
+        self.pathfinding_controller = PathfindingController(self.robot.getDevice("display_pathfinding"))
 
     def process_message(self, message):
         if isinstance(message, protocol.ScanDistanceReading):

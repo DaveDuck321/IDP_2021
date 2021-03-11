@@ -15,6 +15,7 @@ class DriveController:
         self._right_motor.setVelocity(0.0)
 
         self.__waypoints = []
+        self.waypoints_locked = False
         self.__waypoint_index = 0
 
     def set_waypoints(self, waypoints):
@@ -43,6 +44,7 @@ class DriveController:
         """
         if self.__waypoint_index >= len(self.__waypoints):
             self.__waypoints = []
+            self.__waypoint_index = 0
             return True
 
         target_waypoint = self.__waypoints[self.__waypoint_index]
@@ -53,7 +55,11 @@ class DriveController:
         if util.get_distance(current_position, target_waypoint) < tolerance:
             self.__waypoint_index += 1
 
-        return self.__waypoint_index == len(self.__waypoints)
+        if self.__waypoint_index == len(self.__waypoints):
+            self.__waypoints = []
+            self.__waypoint_index = 0
+            return True
+        return False
 
     def navigate_toward_point(self, positioning_system, destination, reverse=False):
         max_speed = self._left_motor.getMaxVelocity()

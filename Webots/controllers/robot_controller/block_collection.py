@@ -49,7 +49,6 @@ class BlockCollection:
 
     def drive_to_block(self):
         if not self.drive_controller.has_waypoints():
-            # print("waiting for waypoints")
             return False
 
         if self.drive_controller.navigate_waypoints(self.positioning_system):
@@ -58,7 +57,6 @@ class BlockCollection:
 
     def face_block(self):
         if self.__block_pos is None:
-            # print("waiting for block_pos")
             return False
         if self.drive_controller.turn_toward_point(self.positioning_system, self.__block_pos):
             self.__starting_pos = self.positioning_system.get_2D_position()
@@ -67,11 +65,11 @@ class BlockCollection:
 
     def inspect_block(self):
         IR_dist = self.IR_sensor.get_distance()
-        if IR_dist is not None and IR_dist < 0.2:
+        if IR_dist is not None and IR_dist < 0.3:
             self.drive_controller.set_waypoints([self.__block_pos])
             self.cur_step = self.drive_over_block
             print("drive over block")
-        elif IR_dist is not None and IR_dist >= 0.2:
+        elif IR_dist is not None and IR_dist >= 0.3:
             self.target_bearing = (self.positioning_system.get_world_bearing() + math.pi / 6.0) % (2 * math.pi)
             self.min_IR_dist = (IR_dist, self.positioning_system.get_world_bearing())
             self.cur_step = self.IR_search_setup
@@ -108,9 +106,6 @@ class BlockCollection:
                 robot_pos[1] + (self.min_IR_dist[0] - BLOCK_OVERSHOOT) * math.sin(self.min_IR_dist[1])
             )
             self.drive_controller.set_waypoints([self.__block_pos])
-            print(self.positioning_system.get_2D_position())
-            print(self.__block_pos)
-            print(self.min_IR_dist[0])
             self.cur_step = self.drive_over_block
 
     def drive_over_block(self):
@@ -133,6 +128,7 @@ class BlockCollection:
         return False
 
     def scan_block_color(self):
+        self.drive_controller.waypoints_locked = True
         self.drive_controller.halt()
         data = self.light.getValue()
         if data > 500:  # completely arbitrary threshold, ask Electronics for the real one
@@ -175,6 +171,7 @@ class BlockCollection:
     def reverse_away(self):
         self.drive_controller.set_waypoints([self.__starting_pos])
         if self.drive_controller.navigate_waypoints(self.positioning_system, reverse=True):
+            self.drive_controller.waypoints_locked = False
             if self.block_collected:
                 self.cur_step = self.return_to_base
                 return False
@@ -183,7 +180,6 @@ class BlockCollection:
 
     def return_to_base(self):
         if not self.drive_controller.has_waypoints():
-            print("waiting for waypoints")
             return False
 
         if self.drive_controller.navigate_waypoints(self.positioning_system):

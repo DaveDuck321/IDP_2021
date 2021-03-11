@@ -1,4 +1,5 @@
 from common import util
+from controller import Display
 
 import numpy as np
 from queue import PriorityQueue
@@ -20,7 +21,7 @@ def dilate(grid, iterations):
 
 
 class PathfindingController:
-    def __init__(self, arena_shape=(240, 240)):
+    def __init__(self, display_pathfinding, arena_shape=(240, 240)):
 
         self.robots_spawn = {
             "Fluffy": (0.0, -0.3),
@@ -39,6 +40,25 @@ class PathfindingController:
         self.dropoff_mask = np.zeros(arena_shape, dtype=np.bool)
 
         self.arena_shape = arena_shape
+
+        self._display_pathfinding = display_pathfinding
+
+    def send_to_display(self, grid):
+        np_image = np.zeros((grid.shape[0], grid.shape[1], 3), dtype=np.uint8)
+        np_image[:, :, 2] = np.where(grid, 255, 0)
+        if "Small" in self.path_masks:
+            np_image[:, :, 0] = np.where(self.path_masks["Small"], 255, 0)
+        if "Fluffy" in self.path_masks:
+            np_image[:, :, 1] = np.where(self.path_masks["Fluffy"], 255, 0)
+
+        image = self._display_pathfinding.imageNew(
+            np_image.tobytes(),
+            Display.RGB,
+            np_image.shape[0],
+            np_image.shape[1]
+        )
+        self._display_pathfinding.imagePaste(image, 0, 0, False)
+        self._display_pathfinding.imageDelete(image)
 
     def grid_to_world_coord(self, coords):
         coords = ((coords[0] - self.arena_shape[0] / 2.0) / 100.0,
@@ -158,8 +178,8 @@ class PathfindingController:
             for BlockCollection
         """
         print("calculating path to nearest block")
+        arena_map = np.swapaxes(arena_map, 0, 1)
         robot_pos_matrix = self.world_to_grid_coords(robot_pos)
-        print(robot_pos_matrix)
         arena_map_with_border = np.ones(self.arena_shape, dtype=np.bool)
         arena_map_with_border[1:-1, 1:-1] = arena_map
 
@@ -185,6 +205,7 @@ class PathfindingController:
                 block_release_pos = release_pos
                 self.path_masks[robot_name] = path_mask
 
+        self.send_to_display(arena_map_with_border)
         return waypoint_path[::-1], block_release_pos
 
     def get_dropoff_path(self, arena_map, robot_pos, robot_name):
@@ -208,5 +229,7 @@ class PathfindingController:
         )
         waypoints = waypoints[::-1] + [self.robots_spawn[robot_name]]
         block_release_pos = self.dropoff_locations[robot_name][self.number_returned[robot_name]]
+        self.path_masks[robot_name] = path_mask
 
+        self.send_to_display(arena_map_with_border)
         return waypoints, block_release_pos
