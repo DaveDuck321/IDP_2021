@@ -4,6 +4,7 @@ from common import util
 
 BLOCK_OVERSHOOT = 0.05
 BLOCK_IN_GRABBER_READING = 0.24
+ROBOT_PINCER_OFFSET = 0.08
 
 
 class BlockCollection:
@@ -119,6 +120,13 @@ class BlockCollection:
         if self.IR_sensor.get_distance() < BLOCK_IN_GRABBER_READING or \
                 self.drive_controller.navigate_waypoints(self.positioning_system):
 
+            robot_pos = self.positioning_system.get_2D_position()
+            robot_bearing = self.positioning_system.get_world_bearing()
+            # Correct glitchy block position estimate
+            self.__block_pos = (
+                robot_pos[0] + ROBOT_PINCER_OFFSET * math.cos(robot_bearing),
+                robot_pos[1] + ROBOT_PINCER_OFFSET * math.sin(robot_bearing)
+            )
             self.pincer_controller.close_pincer()
             self.cur_step = lambda: self.wait_for_pincer(self.scan_block_color)
 

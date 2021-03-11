@@ -439,7 +439,6 @@ class MappingController:
 
         # Output confirmed block positions
         for (block_location, _) in self._confirmed_blocks:
-            print(block_location)
             coord = _to_screenspace(block_location)
             movement_status[coord[0], coord[1], :] = (255, 0, 255)
 
