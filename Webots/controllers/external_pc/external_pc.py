@@ -92,6 +92,9 @@ class ExternalController:
 
             message = protocol.WaypointList(robot_name, waypoint_path + [block_release_pos])
             self.radio.send_message(message)
+
+        elif isinstance(message, protocol.ReportBlockDropoff):
+            self.mapping_controller.add_drop_off_region(message.block_position)
         else:
             raise NotImplementedError()
 

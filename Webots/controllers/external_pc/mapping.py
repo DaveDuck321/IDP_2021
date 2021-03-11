@@ -43,16 +43,16 @@ def _to_worldspace(_coords):
     return (2 * (coords / MAP_RESULTION) - 1) * WORLD_BOUNDS
 
 
-def estimate_measured_static_distance(sensor_pos, sensor_facing, obstacles_pos):
+def estimate_measured_static_distance(sensor_pos, sensor_facing, obstacles_pos, obstacles_radius):
     """
         Returns the shortest distance the ultrasound sensor could measure if it
         were facing at bearing sensor_facing and had no unknown targets.
     """
     angles = sensor_facing + np.linspace(-ULTRASOUND_ANGLE, ULTRASOUND_ANGLE, 30)
-    return get_static_distance(sensor_pos, angles, obstacles_pos)
+    return get_static_distance(sensor_pos, angles, obstacles_pos, obstacles_radius)
 
 
-def get_static_distance(sensor_pos, sensor_facing, obstacles_pos):
+def get_static_distance(sensor_pos, sensor_facing, obstacles_pos, obstacles_radius):
     """
         Returns the ray distance to the nearest static obstacle.
     """
@@ -69,10 +69,10 @@ def get_static_distance(sensor_pos, sensor_facing, obstacles_pos):
     combined_array = np.array([dist_right, dist_left, dist_top, dist_bottom])
 
     # Collisions with other robots and static obsticles
-    for obstacle_pos in obstacles_pos:
+    for obstacle_pos, obstacle_radius in zip(obstacles_pos, obstacles_radius):
         a = x_dir ** 2 + y_dir ** 2
         b = 2 * x_dir * (sensor_pos[0] - obstacle_pos[0]) + 2 * y_dir * (sensor_pos[1] - obstacle_pos[1])
-        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - ROBOT_RADIUS**2
+        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - obstacles_radius**2
 
         # Filter invalid values
         determinant = b**2 - 4 * a * c
@@ -235,6 +235,7 @@ class MappingController:
         self._probability_count = np.ones(MAP_RESULTION)
 
         self._confirmed_blocks = []  # (coords, color)
+        self._dropped_blocks = []
 
         # Display objects for map debugging
         self._display_explored = display_explored
@@ -270,11 +271,23 @@ class MappingController:
             for other_robot in self.__robot_positions_ref
             if other_robot != robot_name]
 
+        other_robot_radius = [ROBOT_RADIUS] * len(other_robot_pos)
+        obstacle_radius = [BLOCK_WIDTH] * len(self._dropped_blocks)
+
         for pos, bearing, reading in zip(sensor_positions, sensor_bearings, sensor_readings):
-            self.update_with_distance(reading, bearing, pos, other_robot_pos)
+            self.update_with_distance(
+                reading, bearing, pos,
+                other_robot_pos + self._dropped_blocks, other_robot_radius + obstacle_radius
+            )
 
         # Save this info for the visualization
         self.__last_sensor_positions[robot_name] = sensor_positions
+
+    def add_drop_off_region(self, position):
+        """
+            The block has been dropped off. Block should be excluded from all future scans.
+        """
+        self._dropped_blocks.append(position)
 
     def invalid_region(self, position):
         """
@@ -305,7 +318,7 @@ class MappingController:
         self._probability_sum[invalid_min[0]:invalid_max[0], invalid_min[1]:invalid_max[1]] = np.zeros(invalid_size)
         self._probability_count[invalid_min[0]:invalid_max[0], invalid_min[1]:invalid_max[1]] = np.ones(invalid_size)
 
-    def update_with_distance(self, detected_distance, measurement_angle, scan_position, obstacles_pos):
+    def update_with_distance(self, detected_distance, measurement_angle, scan_position, obstacles_pos, obstacle_radius):
         """
             Processes a single distance measurement: updating the internal probability maps based on the reading.
         """
@@ -322,7 +335,9 @@ class MappingController:
         bearings = np.abs(np.arctan2(y_vectors, x_vectors) - measurement_angle)
 
         # If reading is statistically indistinct (2 * sd) from wall, ignore it: it might be a wall
-        distance_from_wall = estimate_measured_static_distance(scan_position, measurement_angle, obstacles_pos)
+        distance_from_wall = estimate_measured_static_distance(
+            scan_position, measurement_angle, obstacles_pos, obstacle_radius
+        )
         reading_delta = distance_from_wall - detected_distance
 
         if ULTRASOUND_NOISE < reading_delta < 3 * ULTRASOUND_NOISE:

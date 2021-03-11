@@ -222,4 +222,16 @@ class BlockCollection:
             self.drive_controller.set_waypoints([self.__starting_pos])
             self.cur_step = lambda: self.wait_for_pincer(self.reverse_away)
 
+            robot_pos = self.positioning_system.get_2D_position()
+            robot_bearing = self.positioning_system.get_world_bearing()
+            self.__block_pos = (
+                robot_pos[0] + ROBOT_PINCER_OFFSET * math.cos(robot_bearing),
+                robot_pos[1] + ROBOT_PINCER_OFFSET * math.sin(robot_bearing)
+            )
+
+            self.radio.send_message(protocol.ReportBlockDropoff(
+                self.robot_name,
+                self.__block_pos
+            ))
+
         return self.IN_PROGRESS
