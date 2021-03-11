@@ -26,6 +26,7 @@ MAP_RESULTION = (
 INVALIDATION_REGION = ROBOT_RADIUS
 CLUSTER_BLOCK_OVERLAP = 0.8
 CLUSTER_OVERLAP_THRESHOLD = 0.8
+CLUSTER_PROXIMITY_THRESHOLD = 0.1
 CLUSTER_THRESHOLD = 4  # Require 10px to recognize block
 FORCE_INVAILD_THRESHOLD = 0.5
 
@@ -418,8 +419,8 @@ class MappingController:
         mean_amplitude = np.quantile(occupancy_map, 0.99)
 
         # Account for local variation in intensity
-        for x in range(0, MAP_RESULTION[0], 32):
-            for y in range(0, MAP_RESULTION[1], 32):
+        for x in range(0, MAP_RESULTION[0], 16):
+            for y in range(0, MAP_RESULTION[1], 16):
                 map_segment = occupancy_map[x:x + GRID_SIZE[0], y:y + GRID_SIZE[1]]
                 peak_amplitude = np.quantile(map_segment, 0.98)
                 intensity_map[x:x + GRID_SIZE[0], y:y + GRID_SIZE[1]] = map_segment > peak_amplitude
@@ -446,14 +447,16 @@ class MappingController:
 
             for cluster in clusters:
                 cluster_distance = util.get_distance(cluster.coord, block_location)
+                print(f"{cluster_distance}, {CLUSTER_PROXIMITY_THRESHOLD}")
 
-                if cluster_distance < CLUSTER_BLOCK_OVERLAP * cluster.radius:
+                if cluster_distance < CLUSTER_PROXIMITY_THRESHOLD:
                     if (cluster.color is not None):
                         print("[Warning] Multiple blocks identified in the same cluster")
 
                     if color_consumed:
                         print("[Warning] The same blocks has been assigned to multiple clusters")
 
+                    print("Hopefully this works")
                     color_consumed = True
                     cluster.assign_known_color(index, block_color)
 
@@ -466,7 +469,12 @@ class MappingController:
             if not color_consumed:
                 # Hackfix, no cluster identified properly, assign to closest one
                 # print("[Warning] Block color has been identified but does not exist on map")
-                closest_cluster.cluster.assign_known_color(index, block_color)
+                # closest_cluster.cluster.assign_known_color(index, block_color)
+                new_cluster = ClusterLocation(
+                    block_location, 20, 10, BLOCK_OBSTACLE_WIDTH
+                )
+                new_cluster.assign_known_color(index, block_color)
+                clusters.append(new_cluster)
 
         self.__cache_block_locations = clusters
         return self.__cache_block_locations
@@ -519,6 +527,7 @@ class MappingController:
         return self.__cache_occupancy_map
 
     def output_to_displays(self):
+        self.invalid_cache()
         occupancy_map = get_intensity_map_pixels(self.get_occupancy_map())
 
         # Draw robot and sensor positions to visualization
@@ -553,9 +562,9 @@ class MappingController:
             if block_location.color is None:
                 block_color = (0, 0, 255)
             if block_location.color == "Fluffy":
-                block_color = (255, 0, 0)
-            if block_location.color == "Small":
                 block_color = (0, 255, 0)
+            if block_location.color == "Small":
+                block_color = (255, 0, 0)
 
             movement_status[coord[0], coord[1], :] = block_color
 
