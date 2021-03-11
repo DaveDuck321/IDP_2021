@@ -15,7 +15,6 @@ class DriveController:
         self._right_motor.setVelocity(0.0)
 
         self.__waypoints = []
-        self.waypoints_locked = False
         self.__waypoint_index = 0
 
     def set_waypoints(self, waypoints):

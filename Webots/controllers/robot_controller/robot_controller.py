@@ -81,7 +81,7 @@ class RobotController:
 
         self.get_color_data()
 
-        self.queued_waypoints = None
+        self.queued_waypoints = []
 
     def send_new_scan(self):
         message = protocol.ScanDistanceReading(
@@ -103,7 +103,7 @@ class RobotController:
         """
         if isinstance(message, protocol.WaypointList):
             print("processing waypoint message")
-            self.queued_waypoints = message.waypoints
+            self.queued_waypoints.append(message.waypoints)
         else:
             raise NotImplementedError()
 
@@ -167,17 +167,15 @@ class RobotController:
         self.current_task = self.queued_task
 
     def process_queued_waypoints(self):
-        if self.drive_controller.waypoints_locked or self.queued_waypoints is None:
+        if len(self.queued_waypoints) == 0 or self.drive_controller.has_waypoints():
             return
 
-        print("pushing waypoints")
+        next_waypoints = self.queued_waypoints.pop(0)
         if self.current_task == Tasks.BLOCK_COLLECTION:
-            self.drive_controller.set_waypoints(self.queued_waypoints[:-1])
-            self.block_collection_controller.set_block_pos(self.queued_waypoints[-1])
+            self.drive_controller.set_waypoints(next_waypoints[:-1])
+            self.block_collection_controller.set_block_pos(next_waypoints[-1])
         elif self.current_task == Tasks.NAVIGATE_TO_WAYPOINT:
-            self.drive_controller.set_waypoints(self.queued_waypoints)
-
-        self.queued_waypoints = None
+            self.drive_controller.set_waypoints(next_waypoints)
 
     def tick(self):
         # Get the lastest information from controller

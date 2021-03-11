@@ -120,6 +120,8 @@ class WaypointList(Message):
     def __init__(self, robot_target, waypoints):
         Message.__init__(self, robot_target)
         self.waypoints = waypoints
+        if len(waypoints) == 0:
+            raise ValueError("Waypoint list should never be empty")
 
     def __repr__(self):
         return f"Type:{self.type}, Waypoints:{self.waypoints}"
