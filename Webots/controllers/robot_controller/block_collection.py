@@ -3,6 +3,7 @@ import math
 from common import util
 
 BLOCK_OVERSHOOT = 0.05
+BLOCK_IN_GRABBER_READING = 0.24
 
 
 class BlockCollection:
@@ -117,9 +118,15 @@ class BlockCollection:
             self.cur_step = self.drive_over_block
 
     def drive_over_block(self):
-        if self.drive_controller.navigate_waypoints(self.positioning_system):
+        """
+            Move the robot forward until the block is in the pincers.
+        """
+        if self.IR_sensor.get_distance() < BLOCK_IN_GRABBER_READING or \
+                self.drive_controller.navigate_waypoints(self.positioning_system):
+
             self.pincer_controller.close_pincer()
             self.cur_step = lambda: self.wait_for_pincer(self.scan_block_color)
+
         return False
 
     def scan_block_color(self):
