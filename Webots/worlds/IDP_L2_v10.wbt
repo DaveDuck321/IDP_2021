@@ -1,6 +1,6 @@
 #VRML_SIM R2021a utf8
 WorldInfo {
-  basicTimeStep 16
+  basicTimeStep 8
   coordinateSystem "NUE"
   contactProperties [
     ContactProperties {

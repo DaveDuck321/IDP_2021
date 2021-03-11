@@ -27,6 +27,7 @@ INVALIDATION_REGION = ROBOT_RADIUS
 CLUSTER_BLOCK_OVERLAP = 0.8
 CLUSTER_OVERLAP_THRESHOLD = 0.8
 CLUSTER_THRESHOLD = 10  # Require 10px to recognize block
+FORCE_INVAILD_THRESHOLD = 0.5
 
 
 def _ultrasound_pdf(mean, x):
@@ -423,7 +424,13 @@ class MappingController:
                 peak_amplitude = np.quantile(map_segment, 0.98)
                 intensity_map[x:x + GRID_SIZE[0], y:y + GRID_SIZE[1]] = map_segment > peak_amplitude
 
-        cluster_candidates = np.logical_and(intensity_map, occupancy_map > mean_amplitude)
+        cluster_candidates = np.logical_and(
+            intensity_map,
+            np.logical_and(
+                occupancy_map > mean_amplitude,
+                occupancy_map > FORCE_INVAILD_THRESHOLD
+            )
+        )
 
         # Smooth clusters into single block
         clusters = get_cluster_average(cluster_candidates, occupancy_map)

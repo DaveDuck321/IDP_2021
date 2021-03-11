@@ -109,7 +109,7 @@ class PathfindingController:
         arena_map = arena_map | self.mask_delivered_blocks(arena_map)
 
         # leave a safety margin around areas of "Do Not Travel"
-        arena_map = arena_map | dilate(arena_map, 6)
+        arena_map = arena_map | dilate(arena_map, 7)
 
         # remove the area around the current target location, to eliminate the block to pick
         # up from the mask of areas not to be traversed
@@ -121,7 +121,7 @@ class PathfindingController:
             # Dilate all other robot paths
             if other_name == robot_name:
                 continue
-            arena_map = arena_map | dilate(self.path_masks[other_name], 5)
+            arena_map = arena_map | dilate(self.path_masks[other_name], 7)
 
         self.send_to_display(arena_map)
         # explore the map with added heuristic until it is all explored or you have reached the goal
@@ -189,7 +189,7 @@ class PathfindingController:
         print("calculating path to nearest block")
         arena_map = np.swapaxes(arena_map, 0, 1)
         robot_pos_matrix = self.world_to_grid_coords(robot_pos)
-        arena_map_with_border = np.ones(self.arena_shape, dtype=np.bool)
+        arena_map_with_border = np.zeros(self.arena_shape, dtype=np.bool)
         arena_map_with_border[1:-1, 1:-1] = arena_map
 
         shortest_path = np.inf
@@ -226,7 +226,7 @@ class PathfindingController:
         """
         print("calculating path back to base")
         arena_map = np.swapaxes(arena_map, 0, 1)
-        arena_map_with_border = np.ones(self.arena_shape, dtype=np.bool)
+        arena_map_with_border = np.zeros(self.arena_shape, dtype=np.bool)
         arena_map_with_border[1:-1, 1:-1] = arena_map
 
         waypoints = []
