@@ -12,7 +12,7 @@ BLOCK_WIDTH = 6  # In px
 BLOCK_OBSTACLE_WIDTH = 0.1
 ROBOT_RADIUS = 1.4 * ARM_LENGTH
 ULTRASOUND_MINIMUM_READING = 0.1
-ULTRASOUND_RANGE = 1.3  # 1.3 m
+ULTRASOUND_RANGE = 1.5  # 1.5 m
 ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 3 cm
 ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 degrees total FOV
 WORLD_BOUNDS = np.array([1.2 - 0.01, 1.2 - 0.01])  # UPDATE THIS WITH WORLD FILE
@@ -31,22 +31,18 @@ CLUSTER_THRESHOLD = 4  # Require 10px to recognize block
 FORCE_INVAILD_THRESHOLD = 0.0
 
 
+def _to_screenspace(coord):
+    return util.to_screenspace(coord, WORLD_BOUNDS, MAP_RESULTION)
+
+
+def _to_worldspace(coord):
+    return util.to_worldspace(coord, WORLD_BOUNDS, MAP_RESULTION)
+
+
 def _ultrasound_pdf(mean, x):
     # Ultrasound gets less accurate with distance, this is gaussian
     sigma = ULTRASOUND_NOISE
     return (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((mean - x) / sigma) ** 2)
-
-
-def _to_screenspace(coords):
-    return np.clip(
-        np.flip((coords + WORLD_BOUNDS) / (2 * WORLD_BOUNDS) * MAP_RESULTION),
-        (0, 0), (MAP_RESULTION[0] - 1, MAP_RESULTION[1] - 1)
-    ).astype(int)
-
-
-def _to_worldspace(_coords):
-    coords = np.array([_coords[1], _coords[0]])
-    return (2 * (coords / MAP_RESULTION) - 1) * WORLD_BOUNDS
 
 
 def estimate_measured_static_distance(sensor_pos, sensor_facing, obstacles_pos, obstacles_radius):
@@ -173,20 +169,6 @@ def get_sensor_position(robot_pos, sensor_angle):
         robot_pos[0] + ARM_LENGTH * np.cos(sensor_angle),
         robot_pos[1] + ARM_LENGTH * np.sin(sensor_angle)
     )
-
-
-def get_intensity_map_pixels(intensity_map):
-    """
-        Outputs a greyscale RGB image representing a brightness intensity map.
-    """
-    brightness_map = 255 * intensity_map
-
-    output_map = np.empty((*MAP_RESULTION, 3))
-    output_map[:, :, 0] = brightness_map
-    output_map[:, :, 1] = brightness_map
-    output_map[:, :, 2] = brightness_map
-
-    return output_map.astype(np.uint8)
 
 
 class ClusterLocation:
@@ -526,8 +508,7 @@ class MappingController:
         return self.__cache_occupancy_map
 
     def output_to_displays(self):
-        self.invalid_cache()
-        occupancy_map = get_intensity_map_pixels(self.get_occupancy_map())
+        occupancy_map = util.get_intensity_map_pixels(self.get_occupancy_map())
 
         # Draw robot and sensor positions to visualization
         for robot_name in self.__robot_positions_ref:
@@ -541,20 +522,13 @@ class MappingController:
                 occupancy_map[sensor_pos[0], sensor_pos[1], :] = (0, 255, 0)
 
         # Output to webots display
-        image = self._display_occupancy.imageNew(
-            occupancy_map.tobytes(),
-            Display.RGB,
-            MAP_RESULTION[0],
-            MAP_RESULTION[1]
-        )
-        self._display_occupancy.imagePaste(image, 0, 0, False)
-        self._display_occupancy.imageDelete(image)
+        util.display_numpy_pixels(self._display_occupancy, occupancy_map)
 
         # Display block locations on this map
         block_locations = self.predict_block_locations()
 
         # Output movement status map, marking block locations
-        movement_status = get_intensity_map_pixels(self.get_clear_movement_map())
+        movement_status = util.get_intensity_map_pixels(self.get_clear_movement_map())
 
         for block_location in block_locations:
             coord = _to_screenspace(block_location.coord)
@@ -572,11 +546,5 @@ class MappingController:
             coord = _to_screenspace(block_location)
             movement_status[coord[0], coord[1], :] = (255, 0, 255)
 
-        image = self._display_explored.imageNew(
-            movement_status.tobytes(),
-            Display.RGB,
-            MAP_RESULTION[0],
-            MAP_RESULTION[1]
-        )
-        self._display_explored.imagePaste(image, 0, 0, False)
-        self._display_explored.imageDelete(image)
+        # Output to display
+        util.display_numpy_pixels(self._display_explored, movement_status)

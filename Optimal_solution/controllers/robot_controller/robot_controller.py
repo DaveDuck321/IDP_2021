@@ -81,7 +81,8 @@ class RobotController:
             self.positioning_system.get_2D_position(),
             self.positioning_system.get_world_bearing(),
             self.positioning_system.get_turret_angle(),
-            self.positioning_system.get_distance_readings()
+            self.positioning_system.get_distance_readings(),
+            self.pincer_controller.is_closed,
         )
         self.radio.send_message(message)
 
@@ -151,9 +152,6 @@ class RobotController:
 
         # Get the lastest information from controller
         self.process_controller_instructions()
-
-        # Check if any received waypoints can be loaded safely into navigate_waypoints
-        self.process_queued_waypoints()
 
         # Update the controller
         self.send_new_scan()
