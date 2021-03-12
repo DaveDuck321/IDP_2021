@@ -18,8 +18,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.3559118953215998 -0.8841301073213829 -0.30272211035282254 1.7777107580615084
-  position -3.2462682012400617 2.904450892435423 -0.27840065830606747
+  orientation -0.9981502946336712 -0.04866440503907114 0.03643850991614037 1.531054304042667
+  position -0.5769322302758241 8.913896699360325 0.44154145112031895
 }
 Background {
   skyColor [
@@ -44,8 +44,8 @@ Robot {
   children [
     Display {
       name "display_pathfinding"
-      width 121
-      height 121
+      width 8
+      height 8
     }
     Display {
       name "display_explored"

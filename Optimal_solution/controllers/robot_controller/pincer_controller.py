@@ -16,12 +16,16 @@ class PincerController:
         self.left_motor.setVelocity(max_servo_velocity)
         self.right_motor.setVelocity(max_servo_velocity)
 
+        self.is_closed = False
+
     def open_pincer(self):
         open_angle = math.pi / 4.0
 
+        self.is_closed = False
         self.left_motor.setPosition(open_angle)
         self.right_motor.setPosition(-open_angle)
 
     def close_pincer(self):
+        self.is_closed = True
         self.left_motor.setPosition(0.0)
         self.right_motor.setPosition(0.0)

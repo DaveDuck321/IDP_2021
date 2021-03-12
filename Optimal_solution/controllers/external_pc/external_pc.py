@@ -10,11 +10,15 @@ from controller import Robot
 from common.communication import Radio
 from common import protocol, util
 from mapping import MappingController
-from pathfinding import PathfindingController
+from pathfinding_test import PathfindingController
 
 import numpy as np
 
 ROBOT_TAKEOVER_DISTANCE = 0.2
+ROBOT_SPAWN = {
+    "Fluffy": (0.0, -0.28),
+    "Small": (0.0, 0.28),
+}
 
 TIME_STEP = 1
 RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block"])
@@ -38,9 +42,13 @@ class ExternalController:
 
         # Controller state
         self.mapping_controller = MappingController(
-            self.robot_positions,  # This is a const reference
+            self.robot_states,  # This is a const reference
             self.robot.getDevice("display_explored"),
             self.robot.getDevice("display_occupancy")
+        )
+
+        self.pathfinding = PathfindingController(
+            self.robot.getDevice("display_pathfinding"),
         )
 
     def process_message(self, message):
@@ -96,31 +104,48 @@ class ExternalController:
             if cluster.color is not None and cluster.color != robot_name:
                 continue
 
-            this_distance = util.get_distance(cluster.coord, self.robot_positions[robot_name])
+            this_distance = util.get_distance(
+                cluster.coord,
+                self.robot_states[robot_name].position
+            )
             if this_distance < util.get_distance(closest_block):
-                closest_block = cluster.coord
+                closest_block = tuple(cluster.coord)
 
         # Should the robot fine tune this part itself?
         closest_distance = util.get_distance(closest_block)
         if closest_distance < ROBOT_TAKEOVER_DISTANCE:
-            self.radio.send_message(protocol.AskRobotTakeover(robot_name, closest_block))
+            self.radio.send_message(protocol.AskRobotTakeover(
+                robot_name, closest_block
+            ))
         else:
             # Send the robot its new target position (TODO prevent collisions)
-            self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_block))
+            self.radio.send_message(protocol.GiveRobotTarget(
+                robot_name, closest_block
+            ))
 
     def choose_action_for_robot(self, robot_name):
-        if not self.robot_states[robot_name].holding_block:
+        if self.robot_states[robot_name].holding_block:
+            # Robot should carry block back to base
+            # (TODO prevent collisions)
+            self.radio.send_message(protocol.GiveRobotTarget(robot_name, ROBOT_SPAWN[robot_name]))
+        else:
             # Robot is available, ask it to find a block
             self.request_block_collection(robot_name)
 
     def tick(self):
         # Check for robot messages, take an necessary actions
         self.process_robot_messages()
-        self.mapping_controller.output_to_displays()
+        self.pathfinding.update_map(
+            self.mapping_controller.get_clear_movement_map()
+        )
 
         # Each robot is assigned its own task
         for robot_name in self.robot_states:
             self.choose_action_for_robot(robot_name)
+
+        # Debug visualizations
+        self.mapping_controller.output_to_displays()
+        self.pathfinding.output_to_display()
 
 
 def main():
