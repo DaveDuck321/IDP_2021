@@ -25,6 +25,9 @@ class IRSensor:
         """
         x = self.sensor.getValue()
         y = float('inf')
+        if x is None:
+            print('[Warning]: Attempted IR sensor reading when no data available')
+            return y 
         if x > 654:  # maximum received value from sensor, anything more is too close
             # print("attempted to calculate distance for value closer than sensor capability")
             return y
@@ -32,4 +35,4 @@ class IRSensor:
             (r1, r2), (d1, d2) = val_pair
             if r2 <= x < r1:
                 y = ((x - r1) / (r2 - r1) * (d2 - d1)) + d1
-        return y
+        return y + 0.006 # changed due to a change in noise

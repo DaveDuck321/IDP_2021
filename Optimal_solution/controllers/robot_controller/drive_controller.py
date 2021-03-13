@@ -117,7 +117,7 @@ class DriveController:
             return True
 
         p = 20.0
-        max_speed = self._left_motor.getMaxVelocity() / 2
+        max_speed = self._left_motor.getMaxVelocity()
 
         left_speed = min(max(-bearing_error * p, -max_speed), max_speed)
         right_speed = min(max(bearing_error * p, -max_speed), max_speed)
@@ -125,3 +125,13 @@ class DriveController:
         self._left_motor.setVelocity(-left_speed)
         self._right_motor.setVelocity(-right_speed)
         return False
+
+    def drive_forward(self):
+        max_speed = self._left_motor.getMaxVelocity()
+        self._left_motor.setVelocity(-max_speed)
+        self._right_motor.setVelocity(-max_speed)
+
+    def drive_backward(self):
+        max_speed = self._left_motor.getMaxVelocity()
+        self._left_motor.setVelocity(max_speed)
+        self._right_motor.setVelocity(max_speed)
