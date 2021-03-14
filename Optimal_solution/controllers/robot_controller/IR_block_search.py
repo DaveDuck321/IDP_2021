@@ -3,7 +3,7 @@ import math
 
 class BlockSearch:
     def __init__(self, positioning_system, drive_controller, IR_sensor, pincer_controller):
-        self.SEARCH_ANGLE = math.pi / 3.0   # angle of total search area, cetered on initial direction
+        self.SEARCH_ANGLE = math.pi / 3.0   # angle of total search area, centered on initial direction
         self.MAX_BLOCK_DIST = 0.4           # max distance away a block would be detected in m
         self.BLOCK_IN_GRABBER_DIST = 0.15   # distance reading when block in grabber
 
@@ -11,9 +11,9 @@ class BlockSearch:
         self.drive_controller = drive_controller
         self.IR_sensor = IR_sensor
         self.pincer_controller = pincer_controller
-        
-        self.target_angle = (self.positioning_system.get_world_bearing() + (self.SEARCH_ANGLE / 2.0)) % (2*math.pi)
-        self.min_IR_dist = float('inf')
+
+        self.target_angle = (self.positioning_system.get_world_bearing() + (self.SEARCH_ANGLE / 2.0)) % (2 * math.pi)
+        self.min_IR_dist = math.inf
         self.min_IR_angle = None
         self.block_found = False
         self.sweeping_back = False
@@ -37,7 +37,7 @@ class BlockSearch:
             if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.target_angle):
                 if not self.sweeping_back:
                     self.sweeping_back = True
-                    self.target_angle = (self.target_angle - self.SEARCH_ANGLE + 2*math.pi) % (2*math.pi)
+                    self.target_angle = (self.target_angle - self.SEARCH_ANGLE + 2 * math.pi) % (2 * math.pi)
                 else:
                     if self.min_IR_dist < self.MAX_BLOCK_DIST:
                         print("[Info]: Block Detected")
@@ -47,7 +47,7 @@ class BlockSearch:
                         print("[Info]: No Block Found")
                         return True
         else:
-            # If a block has been found, rotate towards it, then drive until it is within 
+            # If a block has been found, rotate towards it, then drive until it is within
             # the gripper, then close the gripper
             if not self.sweeping_back:
                 # Make sure the robot is facing the right way before driving forward
@@ -67,6 +67,3 @@ class BlockSearch:
                     if self.pincer_controller.close_pincer():
                         return True
         return False
-
-                    
-    

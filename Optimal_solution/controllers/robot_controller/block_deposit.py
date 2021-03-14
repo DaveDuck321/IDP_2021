@@ -1,7 +1,6 @@
 from common import util
 
 
-
 class DropoffController:
     def __init__(self, positioning_system, drive_controller, pincer_controller, robot_name):
         self.DROPOFF_RADIUS = 0.17
