@@ -12,7 +12,6 @@ from common import protocol, util
 from mapping import MappingController
 from pathfinding_test import PathfindingController
 
-import numpy as np
 
 ROBOT_TAKEOVER_DISTANCE = 0.2
 ROBOT_SPAWN = {
@@ -20,12 +19,12 @@ ROBOT_SPAWN = {
     "Small": (0.0, 0.28),
 }
 
-TIME_STEP = 1
+TIME_STEP = 5
 RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block"])
 
 
 class ExternalController:
-    def __init__(self, emitter_channel, receiver_channel, polling_time=1):
+    def __init__(self, emitter_channel, receiver_channel, polling_time=5):
         self.robot = Robot()
 
         # Current robot positions and status, this is a RobotState object
@@ -98,29 +97,27 @@ class ExternalController:
         """
 
         block_locations = self.mapping_controller.predict_block_locations()
-        closest_block = (np.inf, np.inf)
-        for cluster in block_locations:
-            # Check, is known to be the other color
-            if cluster.color is not None and cluster.color != robot_name:
-                continue
+        closest_path = self.pathfinding.get_nearest_block_path(
+            block_locations, robot_name,
+            self.robot_states[robot_name].position
+        )
 
-            this_distance = util.get_distance(
-                cluster.coord,
-                self.robot_states[robot_name].position
-            )
-            if this_distance < util.get_distance(closest_block):
-                closest_block = tuple(cluster.coord)
+        # Check if map was detailed enough to find path
+        if not closest_path.success:
+            return
+
+        next_waypoint = closest_path.waypoints[0]
 
         # Should the robot fine tune this part itself?
-        closest_distance = util.get_distance(closest_block)
+        closest_distance = util.get_distance(next_waypoint)
         if closest_distance < ROBOT_TAKEOVER_DISTANCE:
             self.radio.send_message(protocol.AskRobotTakeover(
-                robot_name, closest_block
+                robot_name, next_waypoint
             ))
         else:
             # Send the robot its new target position (TODO prevent collisions)
             self.radio.send_message(protocol.GiveRobotTarget(
-                robot_name, closest_block
+                robot_name, next_waypoint
             ))
 
     def choose_action_for_robot(self, robot_name):
@@ -144,8 +141,9 @@ class ExternalController:
             self.choose_action_for_robot(robot_name)
 
         # Debug visualizations
+        block_locations = self.mapping_controller.predict_block_locations()
+        self.pathfinding.output_to_display(self.robot_states, block_locations)
         self.mapping_controller.output_to_displays()
-        self.pathfinding.output_to_display()
 
 
 def main():

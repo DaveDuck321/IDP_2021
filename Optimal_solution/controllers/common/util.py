@@ -51,13 +51,20 @@ def normalize_radian(phase):
     return (phase + np.pi) % (2 * np.pi) - np.pi
 
 
-def get_robot_name(color):
-    if color == "green":
-        return "Fluffy"
-    elif color == "red":
-        return "Small"
+def get_robot_color(name):
+    """
+        Returns a color tuple matching the robot name.
+        This is useful for debugging visualizations.
+    """
+    if name is None:
+        # Purple is an unknown color
+        return (255, 0, 255)
+    if name == "Fluffy":
+        return (0, 255, 0)
+    elif name == "Small":
+        return (255, 0, 0)
 
-    raise ValueError(f"Bad robot color {color}")
+    raise ValueError(f"Bad robot name {name}")
 
 
 def get_intensity_map_pixels(intensity_map):

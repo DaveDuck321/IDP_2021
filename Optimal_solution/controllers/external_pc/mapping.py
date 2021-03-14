@@ -1,4 +1,3 @@
-from controller import Display
 from common import util
 
 import numpy as np
@@ -28,7 +27,7 @@ CLUSTER_BLOCK_OVERLAP = 0.8
 CLUSTER_OVERLAP_THRESHOLD = 0.8
 CLUSTER_PROXIMITY_THRESHOLD = 0.1
 CLUSTER_THRESHOLD = 4  # Require 10px to recognize block
-FORCE_INVAILD_THRESHOLD = 0.0
+FORCE_INVAILD_THRESHOLD = 0.5
 
 
 def _to_screenspace(coord):
@@ -532,12 +531,7 @@ class MappingController:
 
         for block_location in block_locations:
             coord = _to_screenspace(block_location.coord)
-            if block_location.color is None:
-                block_color = (0, 0, 255)
-            if block_location.color == "Fluffy":
-                block_color = (0, 255, 0)
-            if block_location.color == "Small":
-                block_color = (255, 0, 0)
+            block_color = util.get_robot_color(block_location.color)
 
             movement_status[coord[0], coord[1], :] = block_color
 
