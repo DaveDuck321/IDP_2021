@@ -98,8 +98,9 @@ class RobotController:
             # Wake the robot if its not doing anything
             if self.current_task == Tasks.NONE:
                 self.queued_task = Tasks.FOLLOWING_CONTROLLER
+
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(f"Could not process message {message}")
 
     def process_controller_instructions(self):
         """
@@ -170,7 +171,7 @@ class RobotController:
         elif self.current_task == Tasks.INITIAL_SCAN:
             if self.scanning_controller.stationary_scan(self.positioning_system):
                 # Only blank the robot controller if nothing is planned
-                self.queued_task = self.queued_task or Tasks.NONE
+                self.queued_task = Tasks.NONE
 
         elif self.current_task == Tasks.NONE:
             pass  # TODO: maybe query controller here

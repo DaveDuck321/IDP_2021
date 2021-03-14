@@ -95,11 +95,11 @@ class ExternalController:
             Find the closest block of the correct color, ask the robot to drive towards it.
             If the robot is close enough for mapping to be useless, let the robot takeover.
         """
-
+        robot_position = self.robot_states[robot_name].position
         block_locations = self.mapping_controller.predict_block_locations()
         closest_path = self.pathfinding.get_nearest_block_path(
             block_locations, robot_name,
-            self.robot_states[robot_name].position
+            robot_position
         )
 
         # Check if map was detailed enough to find path
@@ -109,7 +109,7 @@ class ExternalController:
         next_waypoint = closest_path.waypoints[0]
 
         # Should the robot fine tune this part itself?
-        closest_distance = util.get_distance(next_waypoint)
+        closest_distance = util.get_distance(robot_position, next_waypoint)
         if closest_distance < ROBOT_TAKEOVER_DISTANCE:
             self.radio.send_message(protocol.AskRobotTakeover(
                 robot_name, next_waypoint
