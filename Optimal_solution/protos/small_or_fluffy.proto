@@ -11,23 +11,14 @@ translation IS translation
 rotation IS rotation
 children [
     LightSensor {
-    translation 0.12 0 -2.30884e-15
+    translation 0.115 0 -2.30884e-15
     rotation 2.09385e-07 -3.59841e-07 -1 1.5708
     children [
         Transform {
         translation -0.004 0 0
         children [
-            Shape {
-            appearance PBRAppearance {
-                baseColor 1 0 0
-                metalness 0
-            }
-            geometry Box {
-                size 0.004 0.005 0.015
-            }
-            }
             Transform {
-            translation 0 -0.0275 0.01
+            translation 0 -0.0275 0
             children [
                 Shape {
                 appearance PBRAppearance {
@@ -74,274 +65,26 @@ children [
     DEF chassis Group {
     children [
         Solid {
-        translation 0.075 0.012 -0.02
+        translation -0.071 -0.0615 0
         children [
-            Shape {
+            DEF support Shape {
             appearance PBRAppearance {
-                baseColor 0 0 1
-                metalness 0
-            }
-            geometry DEF servo Box {
-                size 0.02 0.02 0.04
-            }
-            }
-        ]
-        name "front_servo"
-        boundingObject USE servo
-        physics Physics {
-            density -1
-            mass 0.038
-        }
-        }
-        Solid {
-        translation -0.076 -0.028 0
-        children [
-            IRSensor {
-            translation 0.0155 -0.031 0
-            }
-            DEF ball_support Group {
-            children [
-                Transform {
-                translation 0 -0.0325 0
-                children [
-                    Shape {
-                    appearance PBRAppearance {
-                        baseColor 0.32549 0.32549 0.32549
-                        metalness 0
-                    }
-                    geometry Box {
-                        size 0.018 0.0127 0.0445
-                    }
-                    }
-                ]
-                }
-                Shape {
-                appearance PBRAppearance {
-                    baseColor 0.32549 0.32549 0.32549
-                }
-                geometry Box {
-                    size 0.018 0.0523 0.018
-                }
-                }
-            ]
-            }
-        ]
-        name "ball_support"
-        boundingObject USE ball_support
-        physics Physics {
-            density 1240
-        }
-        }
-        Solid {
-        translation 0.075 -0.0625 0
-        children [
-            DEF gg_im_tired Group {
-            children [
-                Shape {
-                appearance DEF grabber_support PBRAppearance {
-                    metalness 0
-                }
-                geometry Box {
-                    size 0.02 0.001 0.1
-                }
-                }
-                Transform {
-                translation 0 0.0305 0.0495
-                children [
-                    Shape {
-                    appearance USE grabber_support
-                    geometry Box {
-                        size 0.02 0.06 0.001
-                    }
-                    }
-                ]
-                }
-                Transform {
-                translation 0 0.0305 -0.0495
-                children [
-                    Shape {
-                    appearance USE grabber_support
-                    geometry Box {
-                        size 0.02 0.06 0.001
-                    }
-                    }
-                ]
-                }
-            ]
-            }
-        ]
-        name "grabber_support"
-        boundingObject USE gg_im_tired
-        physics Physics {
-            density 7850
-        }
-        }
-        Solid {
-        translation 0.02 0.0245 0
-        children [
-            DEF servo_shaft Shape {
-            appearance PBRAppearance {
-                baseColor 0 1 1
-                metalness 0
-            }
-            geometry Cylinder {
-                height 0.005
-                radius 0.003
-            }
-            }
-        ]
-        name "servo_shaft(1)"
-        boundingObject USE servo_shaft
-        physics Physics {
-        }
-        }
-        Solid {
-        translation 0.01 0.012 0
-        children [
-            DEF arm_base Shape {
-            appearance PBRAppearance {
-                baseColor 0 0 1
                 metalness 0
             }
             geometry Box {
-                size 0.04 0.02 0.02
+                size 0.018 0.033 0.018
             }
             }
         ]
-        name "arm_base(1)"
-        boundingObject USE arm_base
-        physics Physics {
-            density -1
-            mass 0.038
-        }
-        }
-        Solid {
-        translation -0.042 -0.0145 0
-        children [
-            DEF battery Shape {
-            appearance PBRAppearance {
-                baseColor 0 0 0
-                metalness 0
-            }
-            geometry Box {
-                size 0.05 0.025 0.1
-            }
-            }
-        ]
-        name "battery(1)"
-        boundingObject USE battery
-        physics Physics {
-            density -1
-            mass 0.151
-        }
-        }
-        Solid {
-        translation -0.076 -0.069 0
-        rotation 1 0 0 0
-        children [
-            DEF ball_caster Shape {
-            appearance PBRAppearance {
-                metalness 0
-            }
-            geometry Sphere {
-                radius 0.009
-                subdivision 2
-            }
-            }
-        ]
-        name "ball_caster(1)"
+        name "caster_support"
         contactMaterial "BallCaster"
-        boundingObject USE ball_caster
+        boundingObject USE support
         physics Physics {
-            density -1
-            mass 0.03
+            density 1
         }
         }
         Solid {
-        translation 0.02 -0.043 -0.095
-        rotation 1 0 0 1.5708
-        children [
-            DEF motor_connector Shape {
-            appearance PBRAppearance {
-                baseColor 1 1 0
-                metalness 0
-            }
-            geometry Cylinder {
-                height 0.02
-                radius 0.0075
-            }
-            }
-        ]
-        name "left_wheel_connector(1)"
-        boundingObject USE motor_connector
-        physics Physics {
-            density -1
-            mass 0.032
-        }
-        }
-        Solid {
-        translation 0.02 -0.043 0.095
-        rotation 1 0 0 1.5708
-        children [
-            DEF motor_connector Shape {
-            appearance PBRAppearance {
-                baseColor 1 1 0
-                metalness 0
-            }
-            geometry Cylinder {
-                height 0.02
-                radius 0.0075
-            }
-            }
-        ]
-        name "right_wheel_connector(1)"
-        boundingObject USE motor_connector
-        physics Physics {
-            density -1
-            mass 0.032
-        }
-        }
-        Solid {
-        translation 0.02 -0.027 -0.05
-        children [
-            DEF motor_housing Shape {
-            appearance PBRAppearance {
-                baseColor 0 0 1
-                metalness 0
-            }
-            geometry Box {
-                size 0.035 0.05 0.07
-            }
-            }
-        ]
-        name "left_motor_mount(1)"
-        boundingObject USE motor_housing
-        physics Physics {
-            density -1
-            mass 0.21
-        }
-        }
-        Solid {
-        translation 0.02 -0.027 0.05
-        children [
-            DEF motor_housing Shape {
-            appearance PBRAppearance {
-                baseColor 0 0 1
-                metalness 0
-            }
-            geometry Box {
-                size 0.035 0.05 0.07
-            }
-            }
-        ]
-        name "right_motor_mount(1)"
-        boundingObject USE motor_housing
-        physics Physics {
-            density -1
-            mass 0.21
-        }
-        }
-        Solid {
+        translation 0.025 -0.01 0
         children [
             DEF chassis_base Shape {
             appearance PBRAppearance {
@@ -349,22 +92,44 @@ children [
                 metalness 0
             }
             geometry Box {
-                size 0.17 0.004 0.17
+                size 0.11 0.07 0.17
             }
             }
         ]
-        name "chassis_base(1)"
+        name "chassis"
         boundingObject USE chassis_base
         physics Physics {
-            density 700
+            density 1
         }
+        }
+        Solid {
+        translation -0.055 -0.01 0
+        children [
+            DEF back Shape {
+            appearance PBRAppearance {
+                baseColor 1 0 0
+                metalness 0
+            }
+            geometry Box {
+                size 0.05 0.07 0.085
+            }
+            }
+        ]
+        name "back"
+        boundingObject USE back
+        physics Physics {
+            density 1
+        }
+        }
+        IRSensor {
+        translation -0.0555 -0.05175 0
         }
     ]
     }
     HingeJoint {
     jointParameters HingeJointParameters {
         axis 0 0 1
-        anchor 0.02 -0.043 0.1125
+        anchor 0.03 -0.043 0.925
     }
     device [
         RotationalMotor {
@@ -374,8 +139,8 @@ children [
         }
     ]
     endPoint Solid {
-        translation 0.019997725916847394 -0.04296212823931962 0.1125000014158723
-        rotation 1 -3.632366791769078e-10 -3.633728904882876e-10 1.5708000000533586
+        translation 0.030011104000279853 -0.04296782884574766 0.09250001611810466
+        rotation -0.9999959621314713 -0.00200672096777378 -0.002012160955362768 4.7123856777637405
         children [
         DEF WHEEL Shape {
             appearance PBRAppearance {
@@ -399,7 +164,7 @@ children [
     HingeJoint {
     jointParameters HingeJointParameters {
         axis 0 0 1
-        anchor 0.02 -0.043 -0.1125
+        anchor 0.03 -0.043 -0.0925
     }
     device [
         RotationalMotor {
@@ -409,8 +174,8 @@ children [
         }
     ]
     endPoint Solid {
-        translation 0.01999772184396513 -0.04296170050052915 -0.11249999854286197
-        rotation 1 -3.64845207995565e-10 -3.6496810675682473e-10 1.5708000000519662
+        translation 0.030002193862447266 -0.04295409417558286 -0.09250001213142409
+        rotation 0.9999985673253768 0.0011965549269360857 0.0011973318257454053 1.5708018468388971
         children [
         DEF WHEEL Shape {
             appearance PBRAppearance {
@@ -434,7 +199,7 @@ children [
     HingeJoint {
     jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor 0.02 0.025 0
+        anchor 0.03 0.025 0
     }
     device [
         RotationalMotor {
@@ -444,8 +209,8 @@ children [
         }
     ]
     endPoint Solid {
-        translation 0.020001633419300245 0.025025909795244064 -2.162714635509216e-11
-        rotation 2.9277552971024103e-07 -1.0779028282307145e-05 -0.9999999999418635 5.121492467103552e-06
+        translation 0.029999928497720114 0.026999556406424458 1.0941663667253712e-07
+        rotation -0.0003477452126485194 0.9999992573819011 0.0011680363492774005 6.279212658566869
         children [
         Group {
             children [
@@ -454,63 +219,67 @@ children [
                 metalness 0
                 }
                 geometry Box {
-                size 0.28 0.001 0.02
+                size 0.257 0.004 0.02
                 }
             }
             DEF arm Group {
                 children [
                 Transform {
-                    translation -0.1395 -0.08 0
+                    translation -0.1265 -0.0815 0
                     children [
                     Shape {
                         appearance USE arm_app
                         geometry Box {
-                        size 0.001 0.02 0.045
+                        size 0.004 0.02 0.045
                         }
                     }
                     ]
                 }
                 Transform {
-                    translation 0.1395 -0.08 0
+                    translation 0.1265 -0.0815 0
                     children [
                     Shape {
                         appearance USE arm_app
                         geometry Box {
-                        size 0.001 0.02 0.045
+                        size 0.004 0.02 0.045
                         }
                     }
                     ]
                 }
                 ]
             }
-            Transform {
-                translation 0.1395 -0.03525 0
+            Group {
                 children [
-                TotalUltrasonicSensor {
-                    translation 0.008 -0.045 0
-                    name "distance_sensor_front"
-                }
-                Shape {
-                    appearance USE arm_app
-                    geometry Box {
-                    size 0.001 0.0695 0.02
+                Transform {
+                    translation 0.1265 -0.03675 0
+                    children [
+                    TotalUltrasonicSensor {
+                        translation 0.0055 -0.04475 0
+                        name "distance_sensor_front"
                     }
-                }
-                ]
-            }
-            Transform {
-                translation -0.1395 -0.03525 0
-                children [
-                TotalUltrasonicSensor {
-                    rotation 0 1 0 3.141592653589793
-                    translation -0.008 -0.045 0
-                    name "distance_sensor_rear"
-                }
-                Shape {
-                    appearance USE arm_app
-                    geometry Box {
-                    size 0.001 0.0695 0.02
+                    Shape {
+                        appearance USE arm_app
+                        geometry Box {
+                        size 0.004 0.0695 0.02
+                        }
                     }
+                    ]
+                }
+                Transform {
+                    translation -0.1265 -0.03675 0
+                    children [
+                    TotalUltrasonicSensor {
+                        rotation 0 1 0 3.141592653589793
+                        translation -0.0055 -0.04475 0
+                        name "distance_sensor_rear"
+                    }
+                    Shape {
+                        appearance USE arm_app
+                        geometry Box {
+                        size 0.004 0.0695 0.02
+                        }
+                    }
+                    ]
                 }
                 ]
             }
@@ -520,7 +289,7 @@ children [
         name "arm"
         boundingObject USE arm
         physics Physics {
-        density 7850
+        density 1
         }
     }
     }
@@ -537,8 +306,8 @@ children [
         }
     ]
     endPoint Solid {
-        translation 0.1 -0.0220003 0.027
-        rotation -5.516944845235342e-07 -0.9999999997642423 -2.170739709167527e-05 0.00043847225342539555
+        translation 0.0950000006372892 -0.02200049983569806 0.027000000029012105
+        rotation -5.823100731931722e-07 -0.9999999995186106 -3.102321063182872e-05 0.0004384760190379118
         children [
         Solid {
             translation 0 -0.01 0
@@ -570,14 +339,14 @@ children [
             ]
             boundingObject USE right_grabber
             physics Physics {
-            density 700
+            density 1
             }
         }
         ]
         name "right_grabber"
         boundingObject USE right_grabber
         physics Physics {
-        density 700
+        density 1
         }
     }
     }
@@ -594,8 +363,7 @@ children [
         }
     ]
     endPoint Solid {
-        translation 0.1 -0.0220003 -0.027
-        rotation 5.661464209183857e-07 0.9999999997636548 -2.1734064694757783e-05 0.00043788385743683716
+        translation 0.09500000102853573 -0.022000699700889546 -0.026999999113786553
         children [
         Solid {
             translation 0 -0.01 0
@@ -627,20 +395,25 @@ children [
             ]
             boundingObject USE left_grabber
             physics Physics {
-            density 700
+            density 1
             }
         }
         ]
         name "left_grabber"
         boundingObject USE left_grabber
         physics Physics {
-        density 700
+        density 1
         }
     }
     }
 ]
 boundingObject USE chassis_base
 physics Physics {
+    density -1
+    mass 1.2
+    centerOfMass [
+    0.01 -0.02 0
+    ]
 }
 name IS name
 %{ if fields.enabled.value then }%
