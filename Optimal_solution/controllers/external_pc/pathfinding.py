@@ -123,7 +123,7 @@ class PathfindingController:
         """
         self._generate_simple_map(raw_arena_map)
 
-    def calculate_route(self, robot_name, start_pos, goal_pos):
+    def __calculate_route(self, robot_name, start_pos, goal_pos):
         """
             Uses A* algorithm and knowledge of current path of other robot, along with obstacles
             in arena to avoid collisions and find shortest path and convert that into a list of
@@ -218,9 +218,22 @@ class PathfindingController:
 
         return PathfindingResult(pathmask, waypoints[::-1], costs[goal], goal_pos)
 
+    def get_robot_path(self, robot_name, robot_pos, goal_pos):
+        """
+            Finds the shortest path from the current robot to a goal.
+            Avoids collisions with the environment and the other robots.
+        """
+        route = self.__calculate_route(robot_name, robot_pos, goal_pos)
+
+        # Avoid collisions with future pathfinding
+        self.path_masks[robot_name] = route.pathmask
+
+        return route
+
     def get_nearest_block_path(self, clusters, robot_name, robot_pos):
         """
-            Finds paths for each known block from current robot.
+            Find the shortest path from the current robot to any block (of the correct color).
+            Avoids collisions with the environment and the other robots.
             Returns: namedtuple("WaypointPath", ["distance", "waypoint_path", "release_pos", "goal_pos"])
 
         """
@@ -232,7 +245,7 @@ class PathfindingController:
                 continue
 
             # Calculate the route for this block
-            route = self.calculate_route(robot_name, robot_pos, cluster.coord)
+            route = self.__calculate_route(robot_name, robot_pos, cluster.coord)
 
             if route.length < shortest_path.length:
                 shortest_path = route

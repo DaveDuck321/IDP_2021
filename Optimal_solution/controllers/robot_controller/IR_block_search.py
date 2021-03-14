@@ -2,7 +2,7 @@ import math
 
 
 class BlockSearch:
-    def __init__(self, positioning_system, drive_controller, IR_sensor, pincer_controller):
+    def __init__(self, IR_sensor, positioning_system, drive_controller, pincer_controller):
         self.SEARCH_ANGLE = math.pi / 3.0   # angle of total search area, centered on initial direction
         self.MAX_BLOCK_DIST = 0.4           # max distance away a block would be detected in m
         self.BLOCK_IN_GRABBER_DIST = 0.15   # distance reading when block in grabber

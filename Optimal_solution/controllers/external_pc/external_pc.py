@@ -10,7 +10,7 @@ from controller import Robot
 from common.communication import Radio
 from common import protocol, util
 from mapping import MappingController
-from pathfinding_test import PathfindingController
+from pathfinding import PathfindingController
 
 
 ROBOT_TAKEOVER_DISTANCE = 0.2
@@ -73,11 +73,11 @@ class ExternalController:
 
         elif isinstance(message, protocol.ReportBlockDropoff):
             self.mapping_controller.add_drop_off_region(message.block_position)
-            self.robot_dropoffs += 1
+            self.robot_dropoffs[message.robot_name] += 1
 
             # Kill robot if it has just dropped off its block
             # The robot is guaranteed to be in the correct place
-            if self.robot_dropoffs == 4:
+            if self.robot_dropoffs[message.robot_name] == 4:
                 self.radio.send_message(protocol.KillImmediately(message.robot_name))
         else:
             raise NotImplementedError()
@@ -107,11 +107,12 @@ class ExternalController:
             return
 
         next_waypoint = closest_path.waypoints[0]
+        last_waypoint = closest_path.waypoints[-1]
 
         # Should the robot fine tune this part itself?
-        closest_distance = util.get_distance(robot_position, next_waypoint)
-        if closest_distance < ROBOT_TAKEOVER_DISTANCE:
-            self.radio.send_message(protocol.AskRobotTakeover(
+        target_distance = util.get_distance(robot_position, last_waypoint)
+        if target_distance < ROBOT_TAKEOVER_DISTANCE:
+            self.radio.send_message(protocol.AskRobotSearch(
                 robot_name, next_waypoint
             ))
         else:
@@ -120,11 +121,37 @@ class ExternalController:
                 robot_name, next_waypoint
             ))
 
+    def request_block_dropoff(self, robot_name):
+        """
+            The robot is holding a block, ensure it returns to its spawn position.
+            If the robot is close enough for mapping to be useless, let the robot takeover.
+        """
+        robot_position = self.robot_states[robot_name].position
+        closest_path = self.pathfinding.get_robot_path(
+            robot_name, robot_position, ROBOT_SPAWN[robot_name]
+        )
+
+        # Check if it was possible to find a path
+        if not closest_path.success:
+            return
+
+        next_waypoint = closest_path.waypoints[0]
+        waypoint_distance = util.get_distance(robot_position, next_waypoint)
+
+        # Should the robot takeover and deposit the block itself?
+        if waypoint_distance < ROBOT_TAKEOVER_DISTANCE:
+            self.radio.send_message(protocol.AskRobotDeposit(
+                robot_name, next_waypoint
+            ))
+        else:
+            # Begin navigating back home
+            self.radio.send_message(protocol.GiveRobotTarget(robot_name, next_waypoint))
+
     def choose_action_for_robot(self, robot_name):
         if self.robot_states[robot_name].holding_block:
             # Robot should carry block back to base
             # (TODO prevent collisions)
-            self.radio.send_message(protocol.GiveRobotTarget(robot_name, ROBOT_SPAWN[robot_name]))
+            self.request_block_dropoff(robot_name)
         else:
             # Robot is available, ask it to find a block
             self.request_block_collection(robot_name)

@@ -1,5 +1,3 @@
-from common import util
-
 import numpy as np
 import mapping
 

@@ -6,10 +6,10 @@ from common import util
 import numpy as np
 
 
-ARM_LENGTH = 0.15  # 150 mm
+ARM_RADIUS = 0.15  # 150 mm
 BLOCK_WIDTH = 6  # In px
 BLOCK_OBSTACLE_WIDTH = 0.1
-ROBOT_RADIUS = 1.4 * ARM_LENGTH
+ROBOT_RADIUS = 1.4 * ARM_RADIUS
 ULTRASOUND_MINIMUM_READING = 0.1
 ULTRASOUND_RANGE = 1.5  # 1.5 m
 ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 3 cm
@@ -40,8 +40,8 @@ def _to_worldspace(coord):
 
 def get_sensor_position(robot_pos, sensor_angle):
     return (
-        robot_pos[0] + ARM_LENGTH * np.cos(sensor_angle),
-        robot_pos[1] + ARM_LENGTH * np.sin(sensor_angle)
+        robot_pos[0] + ARM_RADIUS * np.cos(sensor_angle),
+        robot_pos[1] + ARM_RADIUS * np.sin(sensor_angle)
     )
 
 

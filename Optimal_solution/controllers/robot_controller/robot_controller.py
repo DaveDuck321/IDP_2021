@@ -11,6 +11,9 @@ from pincer_controller import PincerController
 from ultrasonic_emulator import RealUltrasonic
 from scanning import ServoArmController
 from infrared_controller import IRSensor
+from IR_block_search import BlockSearch
+from reverse_away import Reversing
+from block_deposit import BlockDeposit
 
 from common.communication import Radio
 from common import protocol
@@ -25,6 +28,9 @@ class Tasks(Enum):
     NONE = 0
     INITIAL_SCAN = 1
     FOLLOWING_CONTROLLER = 2
+    SEARCHING_BLOCK = 3
+    REVERSING = 4
+    DEPOSITING_BLOCK = 5
 
 
 class RobotController:
@@ -75,6 +81,11 @@ class RobotController:
 
         self.requested_target = None
 
+        # These algorithms are created/ destroyed as needed
+        self.block_searching_algorithm = None
+        self.reversing_algorithm = None
+        self.depositing_algorithm = None
+
     def send_new_scan(self):
         message = protocol.ScanDistanceReading(
             self.robot.getName(),
@@ -92,12 +103,19 @@ class RobotController:
         """
         if isinstance(message, protocol.KillImmediately):
             self.queued_task = Tasks.DEAD
+
         elif isinstance(message, protocol.GiveRobotTarget):
             self.requested_target = message.target
 
             # Wake the robot if its not doing anything
             if self.current_task == Tasks.NONE:
                 self.queued_task = Tasks.FOLLOWING_CONTROLLER
+
+        elif isinstance(message, protocol.AskRobotSearch):
+            self.queued_task = Tasks.SEARCHING_BLOCK
+
+        elif isinstance(message, protocol.AskRobotDeposit):
+            self.queued_task = Tasks.DEPOSITING_BLOCK
 
         else:
             raise NotImplementedError(f"Could not process message {message}")
@@ -119,6 +137,17 @@ class RobotController:
                     DO NOT MODIFY THESE VARIABLES HERE
 
         """
+        if about_to_end == Tasks.SEARCHING_BLOCK:
+            self.block_searching_algorithm = None
+        if about_to_end == Tasks.REVERSING:
+            self.reversing_algorithm = None
+        if about_to_end == Tasks.DEPOSITING_BLOCK:
+            # Report the exact dropoff position
+            self.radio.send_message(protocol.ReportBlockDropoff(
+                self.robot.getName(),
+                self.depositing_algorithm.get_block_position()
+            ))
+            self.depositing_algorithm = None
 
     def __initialize_queued_task(self, about_to_end, about_to_start):
         """
@@ -133,6 +162,25 @@ class RobotController:
         if about_to_start == Tasks.DEAD:
             self.drive_controller.halt()
             self.positioning_system.kill_turret()
+        if about_to_start == Tasks.SEARCHING_BLOCK:
+            self.block_searching_algorithm = BlockSearch(
+                self.IR_sensor,
+                self.positioning_system,
+                self.drive_controller,
+                self.pincer_controller
+            )
+        if about_to_start == Tasks.REVERSING:
+            self.reversing_algorithm = Reversing(
+                self.drive_controller,
+                100  # Reverse for 10 ticks to ensure robot doesn't collide with hidden blocks
+            )
+        if about_to_start == Tasks.DEPOSITING_BLOCK:
+            self.depositing_algorithm = BlockDeposit(
+                self.robot.getName(),
+                self.positioning_system,
+                self.drive_controller,
+                self.pincer_controller
+            )
 
     def switch_to_queued_task(self):
         """
@@ -175,6 +223,22 @@ class RobotController:
 
         elif self.current_task == Tasks.NONE:
             pass  # TODO: maybe query controller here
+
+        elif self.current_task == Tasks.SEARCHING_BLOCK:
+            # Algorithm returns True upon completion
+            if self.block_searching_algorithm():
+                self.queued_task = Tasks.REVERSING
+
+        elif self.current_task == Tasks.REVERSING:
+            # Algorithm returns True upon completion
+            if self.reversing_algorithm():
+                self.queued_task = Tasks.NONE
+
+        elif self.current_task == Tasks.DEPOSITING_BLOCK:
+            # Algorithm returns True upon completion
+            if self.depositing_algorithm():
+                print("[INFO] Block deposited")
+                self.queued_task = Tasks.REVERSING
 
         else:
             print("[ERROR] Unimplemented task type: ", self.current_task)

@@ -110,14 +110,30 @@ class GiveRobotTarget(Message):
         return cls(json_data["robot_name"], json_data["target"])
 
 
-class AskRobotTakeover(Message):
+class AskRobotSearch(Message):
     def __init__(self, robot, target):
         Message.__init__(self, robot)
         self.target = target
 
     @staticmethod
     def get_type():
-        return "ask_robot_takeover"
+        return "ask_robot_search"
+
+    @classmethod
+    def build_from_JSON(cls, json_data):
+        assert json_data["type"] == cls.get_type()
+
+        return cls(json_data["robot_name"], json_data["target"])
+
+
+class AskRobotDeposit(Message):
+    def __init__(self, robot, target):
+        Message.__init__(self, robot)
+        self.target = target
+
+    @staticmethod
+    def get_type():
+        return "ask_robot_deposit"
 
     @classmethod
     def build_from_JSON(cls, json_data):
@@ -149,7 +165,8 @@ MESSAGE_MAPPINGS = {
 
     # Controller
     GiveRobotTarget.get_type(): GiveRobotTarget,
-    AskRobotTakeover.get_type(): AskRobotTakeover,
+    AskRobotSearch.get_type(): AskRobotSearch,
+    AskRobotDeposit.get_type(): AskRobotDeposit,
     KillImmediately.get_type(): KillImmediately,
 }
 

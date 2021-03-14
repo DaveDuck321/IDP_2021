@@ -1,4 +1,4 @@
-class ReversingController:
+class Reversing:
     def __init__(self, drive_controller, tick_count):
         self.drive_controller = drive_controller
         self.tick_count = tick_count
