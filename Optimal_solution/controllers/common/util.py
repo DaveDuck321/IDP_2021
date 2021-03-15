@@ -51,6 +51,22 @@ def normalize_radian(phase):
     return (phase + np.pi) % (2 * np.pi) - np.pi
 
 
+def get_robot_color_string(name):
+    """
+        Returns a color name matching the robot name.
+        This is useful for debugging visualizations.
+    """
+    if name is None:
+        # Purple is an unknown color
+        return "Unknown"
+    if name == "Fluffy":
+        return "Green"
+    elif name == "Small":
+        return "Red"
+
+    raise ValueError(f"Bad robot name {name}")
+
+
 def get_robot_color(name):
     """
         Returns a color tuple matching the robot name.

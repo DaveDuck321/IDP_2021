@@ -91,18 +91,20 @@ class DriveController:
         """
             For the tick, rotate toward the bearing of a specified target point.
         """
-        error = positioning_system.get_bearing_error(target)
-        if abs(error) <= tolerance:
+        bearing_error = positioning_system.get_bearing_error(target)
+
+        if abs(bearing_error) <= tolerance:
             return True
 
         p = 20.0
-        max_speed = self._left_motor.getMaxVelocity() / 2
+        max_speed = self._left_motor.getMaxVelocity()
 
-        left_speed = min(max(-error * p, -max_speed), max_speed)
-        right_speed = min(max(error * p, -max_speed), max_speed)
+        left_speed = min(max(-bearing_error * p, -max_speed), max_speed)
+        right_speed = min(max(bearing_error * p, -max_speed), max_speed)
 
         self._left_motor.setVelocity(-left_speed)
         self._right_motor.setVelocity(-right_speed)
+
         return False
 
     def rotate_absolute_angle(self, positioning_system, goal_bearing, tolerance=math.pi / 180.0):

@@ -1,7 +1,4 @@
 from common import util
-import math
-
-PINCER_OFFSET = 0.1
 
 
 class BlockDeposit:
@@ -23,11 +20,3 @@ class BlockDeposit:
             if self.pincer_controller.open_pincer():
                 return True
         return False
-
-    def get_block_position(self):
-        robot_pos = self.positioning_system.get_2D_position()
-        robot_bearing = self.positioning_system.get_world_bearing()
-        return (
-            robot_pos[0] + PINCER_OFFSET * math.cos(robot_bearing),
-            robot_pos[1] + PINCER_OFFSET * math.sin(robot_bearing)
-        )

@@ -2,6 +2,11 @@ import math
 
 
 class BlockSearch:
+    FAILED = -1
+    IN_PROGRESS = 0
+    FOUND_BLOCK = 1
+    TIMEOUT = 2
+
     def __init__(self, IR_sensor, positioning_system, drive_controller, pincer_controller):
         self.SEARCH_ANGLE = math.pi / 3.0   # angle of total search area, centered on initial direction
         self.MAX_BLOCK_DIST = 0.4           # max distance away a block would be detected in m
@@ -21,6 +26,9 @@ class BlockSearch:
 
         self.FUBAR_timer = 250
 
+    def clean(self):
+        self.drive_controller.halt()
+
     def __call__(self):
         self.rolling_IR_readings.append(self.IR_sensor.get_distance())
         self.rolling_IR_readings.pop(0)
@@ -39,13 +47,13 @@ class BlockSearch:
                     self.sweeping_back = True
                     self.target_angle = (self.target_angle - self.SEARCH_ANGLE + 2 * math.pi) % (2 * math.pi)
                 else:
-                    if self.min_IR_dist < self.MAX_BLOCK_DIST:
+                    if IR_dist < self.MAX_BLOCK_DIST:
                         print("[Info]: Block Detected")
                         self.block_found = True
                         self.sweeping_back = False
                     else:
                         print("[Info]: No Block Found")
-                        return True
+                        return self.FAILED
         else:
             # If a block has been found, rotate towards it, then drive until it is within
             # the gripper, then close the gripper
@@ -57,13 +65,11 @@ class BlockSearch:
                 self.FUBAR_timer -= 1
                 if self.FUBAR_timer == 0:
                     print('[Warning]: Took too long to reach block')
-                    self.drive_controller.halt()
-                    self.pincer_controller.close_pincer()
-                    return True
+                    return self.TIMEOUT
+
                 if IR_dist > self.BLOCK_IN_GRABBER_DIST:
                     self.drive_controller.drive_forward()
                 else:
-                    self.drive_controller.halt()
                     if self.pincer_controller.close_pincer():
-                        return True
+                        return self.FOUND_BLOCK
         return False

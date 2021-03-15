@@ -64,9 +64,17 @@ class MappingController:
             Invalidates the region surrounding a single block.
             This should be used after the robot changes the environment for any reason.
         """
+        block_locations = self.predict_block_locations()
+
         invalidation_region = INVALIDATION_REGION / 2
-        self.hard_mapping.invalid_region(position, invalidation_region)
+        self.hard_mapping.invalid_region(block_locations, position, invalidation_region)
         self.fuzzy_mapping.invalid_region(position, invalidation_region)
+
+    def update_with_color_reading(self, block_location, block_color):
+        """
+            A robot has just read a block color, log this block position to the world map.
+        """
+        self.hard_mapping.update_with_color_reading(block_location, block_color)
 
     def update_with_scan_result(self, robot_name, robot_bearing, arm_angle, sensor_readings):
         """

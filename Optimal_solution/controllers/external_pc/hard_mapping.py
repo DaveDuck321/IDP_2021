@@ -127,17 +127,16 @@ class ExactMapping:
         """
             A robot has just read a block color, log this block position to the world map.
         """
-        self._fuzzy_mapping.invalid_cache()
         self.confirmed_blocks.append((block_location, block_color))
 
-    def invalid_region(self, position, invalidation_size):
+    def invalid_region(self, block_locations, position, invalidation_size):
         """
             Invalidates the region surrounding a single block.
             This should be used after the robot changes the environment for an reason.
         """
 
         # Remove each block in a known position
-        for cluster in self.predict_block_locations():
+        for cluster in block_locations:
             if util.get_distance(cluster.coord, position) < cluster.radius:
                 invalidation_size = max(invalidation_size, cluster.radius)
                 if(cluster.known_index is not None):

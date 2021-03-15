@@ -22,7 +22,7 @@ class Message:
 # ---------------------------------
 
 
-class ReportIncorrectColor(Message):
+class ReportBlockColor(Message):
     def __init__(self, robot_name, block_position, color):
         Message.__init__(self, robot_name)
         self.block_position = block_position
@@ -30,7 +30,7 @@ class ReportIncorrectColor(Message):
 
     @staticmethod
     def get_type():
-        return "report_incorrect_color"
+        return "report_block_color"
 
     @classmethod
     def build_from_JSON(cls, json_data):
@@ -160,7 +160,7 @@ class KillImmediately(Message):
 MESSAGE_MAPPINGS = {
     # Robot
     ScanDistanceReading.get_type(): ScanDistanceReading,
-    ReportIncorrectColor.get_type(): ReportIncorrectColor,
+    ReportBlockColor.get_type(): ReportBlockColor,
     ReportBlockDropoff.get_type(): ReportBlockDropoff,
 
     # Controller

@@ -11,12 +11,13 @@ from pincer_controller import PincerController
 from ultrasonic_emulator import RealUltrasonic
 from scanning import ServoArmController
 from infrared_controller import IRSensor
+from color_sensor import ColorSensor
 from IR_block_search import BlockSearch
 from reverse_away import Reversing
 from block_deposit import BlockDeposit
 
 from common.communication import Radio
-from common import protocol
+from common import protocol, util
 
 from enum import Enum
 
@@ -27,10 +28,16 @@ class Tasks(Enum):
     DEAD = -1
     NONE = 0
     INITIAL_SCAN = 1
+
     FOLLOWING_CONTROLLER = 2
+
     SEARCHING_BLOCK = 3
-    REVERSING = 4
-    DEPOSITING_BLOCK = 5
+    FACE_TARGET_SEARCH = 4
+
+    REVERSING = 5
+    DEPOSITING_BLOCK = 6
+    SCANNING_COLOR = 7
+    REJECT_BLOCK = 8
 
 
 class RobotController:
@@ -70,9 +77,11 @@ class RobotController:
 
         self.scanning_controller = ServoArmController()
 
-        # Enable light sensor
-        self.light = self.robot.getDevice("light_sensor")
-        self.light.enable(sensor_polling)
+        # Setup color sensor
+        self.color_sensor = ColorSensor(
+            self.robot.getDevice("light_sensor"),
+            sampling_rate=sensor_polling
+        )
 
         self.IR_sensor = IRSensor(self.robot.getDevice("IR sensor"), sensor_polling)
 
@@ -80,6 +89,7 @@ class RobotController:
         self.pincer_controller.open_pincer()
 
         self.requested_target = None
+        self.locked_target = None
 
         # These algorithms are created/ destroyed as needed
         self.block_searching_algorithm = None
@@ -112,10 +122,16 @@ class RobotController:
                 self.queued_task = Tasks.FOLLOWING_CONTROLLER
 
         elif isinstance(message, protocol.AskRobotSearch):
-            self.queued_task = Tasks.SEARCHING_BLOCK
+            # self.requested_target = message.target
+            # Ensure robot isn't already searching
+            if self.current_task != Tasks.FACE_TARGET_SEARCH and self.current_task != Tasks.SEARCHING_BLOCK:
+                self.locked_target = message.target
+                self.queued_task = Tasks.FACE_TARGET_SEARCH
 
         elif isinstance(message, protocol.AskRobotDeposit):
-            self.queued_task = Tasks.DEPOSITING_BLOCK
+            # Robot should only attempt to deposit block if all other actions are finished
+            if self.current_task != Tasks.NONE:
+                self.queued_task = Tasks.DEPOSITING_BLOCK
 
         else:
             raise NotImplementedError(f"Could not process message {message}")
@@ -138,6 +154,7 @@ class RobotController:
 
         """
         if about_to_end == Tasks.SEARCHING_BLOCK:
+            self.block_searching_algorithm.clean()
             self.block_searching_algorithm = None
         if about_to_end == Tasks.REVERSING:
             self.reversing_algorithm = None
@@ -145,9 +162,12 @@ class RobotController:
             # Report the exact dropoff position
             self.radio.send_message(protocol.ReportBlockDropoff(
                 self.robot.getName(),
-                self.depositing_algorithm.get_block_position()
+                self.positioning_system.get_pincer_position()
             ))
             self.depositing_algorithm = None
+
+        if about_to_end == Tasks.FACE_TARGET_SEARCH:
+            self.locked_target = None
 
     def __initialize_queued_task(self, about_to_end, about_to_start):
         """
@@ -157,12 +177,14 @@ class RobotController:
                     DO NOT MODIFY THESE VARIABLES HERE
 
         """
+        print(f"[INFO] {self.robot.getName()} starting new task: {about_to_start}")
         if about_to_start == Tasks.INITIAL_SCAN:
             self.drive_controller.halt()
         if about_to_start == Tasks.DEAD:
             self.drive_controller.halt()
             self.positioning_system.kill_turret()
         if about_to_start == Tasks.SEARCHING_BLOCK:
+            print("[INFO] Started searching for block")
             self.block_searching_algorithm = BlockSearch(
                 self.IR_sensor,
                 self.positioning_system,
@@ -225,9 +247,49 @@ class RobotController:
             pass  # TODO: maybe query controller here
 
         elif self.current_task == Tasks.SEARCHING_BLOCK:
-            # Algorithm returns True upon completion
-            if self.block_searching_algorithm():
+            # Algorithm returns code upon completion
+            result = self.block_searching_algorithm()
+            if result == BlockSearch.FOUND_BLOCK:
+                self.queued_task = Tasks.SCANNING_COLOR
+
+            elif result == BlockSearch.FAILED or result == BlockSearch.TIMEOUT:
+                self.queued_task = Tasks.NONE
+
+        elif self.current_task == Tasks.SCANNING_COLOR:
+            block_color = self.color_sensor.scan_color()
+            color_name = util.get_robot_color_string(block_color)
+
+            # Log this color to the console for point
+            print(f"[INFO] Robot '{self.robot.getName()}' Found {color_name} block")
+
+            # Alert the controller of the true block color
+            self.radio.send_message(protocol.ReportBlockColor(
+                self.robot.getName(),
+                self.positioning_system.get_pincer_position(),
+                block_color
+            ))
+
+            if block_color == self.robot.getName():
+                # Block is correct color and pincer is already closed
                 self.queued_task = Tasks.REVERSING
+
+            else:
+                # Block color is wrong, open pincer to reject block
+                self.queued_task = Tasks.REJECT_BLOCK
+
+        elif self.current_task == Tasks.REJECT_BLOCK:
+            # Algorithm returns True upon completion
+            if self.pincer_controller.open_pincer():
+                self.queued_task = Tasks.REVERSING
+
+        elif self.current_task == Tasks.FACE_TARGET_SEARCH:
+            # Algorithm returns True upon completion
+            is_finished = self.drive_controller.turn_toward_point(
+                self.positioning_system,
+                self.requested_target
+            )
+            if is_finished:
+                self.queued_task = Tasks.SEARCHING_BLOCK
 
         elif self.current_task == Tasks.REVERSING:
             # Algorithm returns True upon completion
