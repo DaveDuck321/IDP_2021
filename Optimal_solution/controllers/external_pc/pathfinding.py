@@ -62,8 +62,8 @@ class PathfindingController:
 
         # Simplify the map
         MAP_SCALE = (
-            int(raw_arena_map.shape[0] / SIMPLIFIED_RESOLUTION[0]),
-            int(raw_arena_map.shape[1] / SIMPLIFIED_RESOLUTION[1])
+            int(raw_arena_map.shape[0] / (SIMPLIFIED_RESOLUTION[0] - 1)),
+            int(raw_arena_map.shape[1] / (SIMPLIFIED_RESOLUTION[1] - 1))
         )
 
         simple_map = np.zeros(SIMPLIFIED_RESOLUTION, dtype=np.bool8)
@@ -211,12 +211,23 @@ class PathfindingController:
             # Record this on the mask
             pathmask[current_coord] = True
 
-            # Output a minimum number of waypoint to allow better control
-            if directions[current_coord] != direction_index:
-                waypoints.append(tuple(_to_worldspace(current_coord)))
-                direction_index = directions[current_coord]
+            # Bad edge case here, the algorithm really should have accommodated this from the start
+            if current_coord == start:
+                break
 
-        return PathfindingResult(pathmask, waypoints[::-1], costs[goal], goal_pos)
+            # Output a minimum number of waypoint to allow better control
+            waypoints.append(tuple(_to_worldspace(current_coord)))
+            direction_index = directions[current_coord]
+
+        # Get the pathfinding error (to ensure true closest block is selected)
+        penultimate_coord = (
+            goal[0] - walks[directions[goal]][0],
+            goal[1] - walks[directions[goal]][1]
+        )
+        penultimate_cost = costs[penultimate_coord]
+        cost_approximation = penultimate_cost + util.get_distance(goal_pos, _to_worldspace(penultimate_coord))
+
+        return PathfindingResult(pathmask, waypoints[::-1], cost_approximation, goal_pos)
 
     def get_robot_path(self, robot_name, robot_pos, goal_pos):
         """

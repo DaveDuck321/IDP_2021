@@ -2,6 +2,7 @@ from common import util
 import math
 
 SPEED_OF_SOUND = 343
+PINCER_OFFSET = 0.1
 
 
 def get_echo_distance(time_us):
@@ -78,6 +79,7 @@ class PositioningSystem:
         current_bearing = self.get_world_bearing()
         if reverse:
             current_bearing = (current_bearing + math.pi) % (2 * math.pi)
+
         goal_bearing = util.get_bearing(target, current_position)
 
         # correct for errors due to current bearing and target bearing being between 0 to 2pi
@@ -96,4 +98,12 @@ class PositioningSystem:
         return (
             get_echo_distance(self._front_distance.getValue()),
             get_echo_distance(self._rear_distance.getValue())
+        )
+
+    def get_pincer_position(self):
+        robot_pos = self.get_2D_position()
+        robot_bearing = self.get_world_bearing()
+        return (
+            robot_pos[0] + PINCER_OFFSET * math.cos(robot_bearing),
+            robot_pos[1] + PINCER_OFFSET * math.sin(robot_bearing)
         )

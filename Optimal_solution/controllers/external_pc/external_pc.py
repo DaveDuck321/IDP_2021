@@ -13,6 +13,7 @@ from mapping import MappingController
 from pathfinding import PathfindingController
 
 
+GOAL_TOLERANCE = 0.3
 ROBOT_TAKEOVER_DISTANCE = 0.2
 ROBOT_SPAWN = {
     "Fluffy": (0.0, -0.28),
@@ -23,6 +24,48 @@ TIME_STEP = 5
 RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block"])
 
 
+class CurrentRoute:
+    """
+        Describes the current route of a robot.
+        The route will change once enough votes are received
+    """
+
+    def __init__(self):
+        self.waypoints = []
+        self.votes = -1
+
+    def reset_votes(self):
+        self.waypoints = []
+        self.votes = -1
+
+    def vote_for_route(self, new_waypoints):
+        # Check if routes are identical. This must be right, stick with it
+        if new_waypoints == self.waypoints:
+            self.votes += 20
+            return
+
+        routes_different = False
+        if len(new_waypoints) < len(self.waypoints):
+            # Check if the route just got shorter (or its completely different)
+            for new_p, old_p in zip(new_waypoints[::-1], self.waypoints[::-1]):
+                if GOAL_TOLERANCE > util.get_distance(new_p, old_p):
+                    routes_different = True
+                    break
+
+            if not routes_different:
+                # Route is just the same (but shorter)
+                self.waypoints = new_waypoints
+                return
+
+        # Routes are certainly different, vote against current route
+        self.votes -= 2
+
+        # If the current route is unpopular, change it
+        if self.votes < 0:
+            self.waypoints = new_waypoints
+            self.votes = 100
+
+
 class ExternalController:
     def __init__(self, emitter_channel, receiver_channel, polling_time=5):
         self.robot = Robot()
@@ -30,6 +73,9 @@ class ExternalController:
         # Current robot positions and status, this is a RobotState object
         self.robot_states = {}
         self.robot_dropoffs = defaultdict(int)
+
+        # Used to ensure robot pathfinding isn't too noisy
+        self.robot_paths = defaultdict(CurrentRoute)
 
         # Controller IO
         self.radio = Radio(
@@ -67,9 +113,15 @@ class ExternalController:
                 message.distance_readings
             )
 
-        elif isinstance(message, protocol.ReportIncorrectColor):
-            # The robot failed to pickup block due to its color, report this
-            self.mapping_controller.update_with_color_reading(message.block_position, message.color)
+        elif isinstance(message, protocol.ReportBlockColor):
+            if message.color != message.robot_name:
+                # The robot failed to pickup block due to its color, report this
+                self.mapping_controller.update_with_color_reading(message.block_position, message.color)
+            else:
+                # The robot was the correct color so is now moving the block
+                # Invalidate this old region now that it has changed
+                self.robot_paths[message.robot_name].reset_votes()
+                self.mapping_controller.invalid_region(message.block_position)
 
         elif isinstance(message, protocol.ReportBlockDropoff):
             self.mapping_controller.add_drop_off_region(message.block_position)
@@ -106,8 +158,12 @@ class ExternalController:
         if not closest_path.success:
             return
 
-        next_waypoint = closest_path.waypoints[0]
-        last_waypoint = closest_path.waypoints[-1]
+        # Should to robot switch over to this new path?
+        self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
+        chosen_path = self.robot_paths[robot_name].waypoints
+
+        next_waypoint = chosen_path[0]
+        last_waypoint = chosen_path[-1]
 
         # Should the robot fine tune this part itself?
         target_distance = util.get_distance(robot_position, last_waypoint)
@@ -115,11 +171,23 @@ class ExternalController:
             self.radio.send_message(protocol.AskRobotSearch(
                 robot_name, next_waypoint
             ))
-        else:
-            # Send the robot its new target position (TODO prevent collisions)
-            self.radio.send_message(protocol.GiveRobotTarget(
-                robot_name, next_waypoint
-            ))
+
+            return
+
+        # Robot needs better instructions, it cannot do this by itself
+
+        # Sometimes waypoints will flicker and robot will be trapped
+        # Smooth neighboring waypoints to minimize this
+        if len(chosen_path) > 1:
+            next_waypoint = (
+                0.5 * (next_waypoint[0] + chosen_path[1][0]),
+                0.5 * (next_waypoint[1] + chosen_path[1][1])
+            )
+
+        # Send the robot its new target position (TODO prevent collisions)
+        self.radio.send_message(protocol.GiveRobotTarget(
+            robot_name, next_waypoint
+        ))
 
     def request_block_dropoff(self, robot_name):
         """
