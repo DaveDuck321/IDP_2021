@@ -17,7 +17,7 @@ def _to_worldspace(coord):
     return util.to_worldspace(coord, util.WORLD_BOUNDS, SIMPLIFIED_RESOLUTION)
 
 
-def dilate(grid, iterations=2):
+def dilate(grid, iterations):
     """
         Create buffer area around obstacles to avoid robot collision.
     """
@@ -69,8 +69,9 @@ class PathfindingController:
         simple_map = np.zeros(SIMPLIFIED_RESOLUTION, dtype=np.bool8)
         for x in range(0, SIMPLIFIED_RESOLUTION[0]):
             for y in range(0, SIMPLIFIED_RESOLUTION[1]):
-                lower = (x * MAP_SCALE[0], y * MAP_SCALE[1])
-                upper = (lower[0] + MAP_SCALE[0], lower[1] + MAP_SCALE[1])
+                # Oversample to avoid asymmetric dilation
+                lower = (x * MAP_SCALE[0] - MAP_SCALE[0] // 4, y * MAP_SCALE[1] - MAP_SCALE[1] // 4)
+                upper = (int(lower[0] + 1.5 * MAP_SCALE[0]), int(lower[1] + 1.5 * MAP_SCALE[1]))
 
                 obstacle_density = np.sum(death_mask[lower[0]:upper[0], lower[1]:upper[1]])
                 if obstacle_density > SIGNIFICANT_OBSTACLE_DENSITY:
@@ -110,7 +111,7 @@ class PathfindingController:
             coord = tuple(_to_screenspace(util.ROBOT_SPAWN[other_robot]))
             cooperation_map[coord] = True
 
-        dilate(cooperation_map)
+        dilate(cooperation_map, 2)
 
         # Add boarders
         cooperation_map[0, :] = True
@@ -180,7 +181,9 @@ class PathfindingController:
             (1, -1, DIAGONAL_STEP)
         ], dtype=np.int32)
 
-        pathfinding_map = self._simple_map
+        pathfinding_map = self._simple_map.copy()
+        pathfinding_map[goal[0] - 1: goal[0] + 1, goal[1] - 1: goal[1] + 1] = True
+
         other_robot_map = self._generate_cooperation_map(robot_name, robot_states, other_paths)
 
         #util.display_numpy_pixels(self._display, pathfinding_map & other_robot_map)

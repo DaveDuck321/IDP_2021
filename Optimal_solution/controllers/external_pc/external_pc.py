@@ -15,6 +15,7 @@ from pathfinding import PathfindingController
 
 GOAL_TOLERANCE = 0.3
 ROBOT_TAKEOVER_DISTANCE = 0.2
+WAYPONT_TOLERANCE = 0.1
 
 TIME_STEP = 20
 RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block"])
@@ -33,6 +34,21 @@ class CurrentRoute:
     def reset_votes(self):
         self.waypoints = []
         self.votes = -1
+
+    def crop_waypoints(self, robot_position):
+        """
+            Dynamically updates the robot's waypoints preventing circling.
+            NOTE: The robot is allowed to 'skip' waypoints
+        """
+        current_waypoint = -1
+        for index, waypoint in enumerate(self.waypoints):
+            if util.get_distance(waypoint, robot_position) < WAYPONT_TOLERANCE:
+                # Robot is close enough to waypoint to skip straight to this point in its path
+                current_waypoint = min(index + 1, len(self.waypoints) - 1)
+
+        if current_waypoint != -1:
+            # New waypoint was found, skip to this point
+            self.waypoints = self.waypoints[current_waypoint:]
 
     def vote_for_route(self, new_waypoints):
         # Check if routes are identical. This must be right, stick with it
@@ -206,17 +222,18 @@ class ExternalController:
         if not closest_path.success:
             return
 
-        next_waypoint = closest_path.waypoints[0]
-        waypoint_distance = util.get_distance(robot_position, next_waypoint)
+        last_waypoint = closest_path.waypoints[-1]
+        destination_distance = util.get_distance(robot_position, last_waypoint)
 
         # Should the robot takeover and deposit the block itself?
-        if waypoint_distance < ROBOT_TAKEOVER_DISTANCE:
+        if destination_distance < ROBOT_TAKEOVER_DISTANCE:
             self.radio.send_message(protocol.AskRobotDeposit(
-                robot_name, next_waypoint
+                robot_name, last_waypoint
             ))
         else:
             # Begin navigating back home
-            self.radio.send_message(protocol.GiveRobotTarget(robot_name, next_waypoint))
+            # Navigate to next waypoint
+            self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_path.waypoints[0]))
 
     def choose_action_for_robot(self, robot_name):
         if self.robot_states[robot_name].holding_block:
@@ -237,6 +254,9 @@ class ExternalController:
         # Each robot is assigned its own task
         for robot_name in self.robot_states:
             self.choose_action_for_robot(robot_name)
+
+            # Ensure all waypoints are up-to date
+            self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
 
         # Debug visualizations
         block_locations = self.mapping_controller.predict_block_locations()
