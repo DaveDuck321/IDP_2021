@@ -18,7 +18,7 @@ ROBOT_TAKEOVER_DISTANCE = 0.2
 WAYPONT_TOLERANCE = 0.1
 
 TIME_STEP = 20
-RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block"])
+RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block", "dead"])
 
 
 class CurrentRoute:
@@ -115,7 +115,8 @@ class ExternalController:
             self.robot_states[message.robot_name] = RobotState(
                 message.robot_position,
                 message.robot_bearing,
-                message.holding_block
+                message.holding_block,
+                False  # Assumed that dead robot messages have already been filtered out
             )
 
             self.mapping_controller.update_with_scan_result(
@@ -148,6 +149,17 @@ class ExternalController:
             # Kill robot if it has just dropped off its block
             # The robot is guaranteed to be in the correct place
             if self.robot_dropoffs[message.robot_name] == 4:
+                # Mark the robot as dead
+                self.robot_states[message.robot_name] = RobotState(
+                    message.robot_position,
+                    message.robot_bearing,
+                    message.holding_block,
+                    True
+                )
+                # Ensure its not pathfinding anywhere
+                self.robot_paths[message.robot_name].reset_votes()
+
+                # Tell the robot its dead
                 self.radio.send_message(protocol.KillImmediately(message.robot_name))
         else:
             raise NotImplementedError()
@@ -158,6 +170,10 @@ class ExternalController:
             Act on the messages one-by-one
         """
         for message in self.radio.get_messages():
+            # Ignore all messages from dead robots
+            if message.robot_name in self.robot_states and self.robot_states[message.robot_name].dead:
+                continue
+
             self.process_message(message)
 
     def request_block_collection(self, robot_name):
@@ -255,6 +271,9 @@ class ExternalController:
 
         # Each robot is assigned its own task
         for robot_name in self.robot_states:
+            if self.robot_states[robot_name].dead:
+                continue
+
             self.choose_action_for_robot(robot_name)
 
             # Ensure all waypoints are up-to date
