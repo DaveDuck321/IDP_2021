@@ -151,9 +151,9 @@ class ExternalController:
             if self.robot_dropoffs[message.robot_name] == 4:
                 # Mark the robot as dead
                 self.robot_states[message.robot_name] = RobotState(
-                    message.robot_position,
-                    message.robot_bearing,
-                    message.holding_block,
+                    self.robot_states[message.robot_name].robot_position,
+                    self.robot_states[message.robot_name].robot_bearing,
+                    self.robot_states[message.robot_name].holding_block,
                     True
                 )
                 # Ensure its not pathfinding anywhere
