@@ -58,11 +58,23 @@ class MappingController:
         self._display_occupancy = display_occupancy
         self.__last_sensor_positions = {}
 
+        #
+        self.__cache_block_locations = None
+        self.__cache_occupancy_map = None
+        self.__cache_clear_movement_map = None
+
+    def invalidate_cache(self):
+        self.__cache_block_locations = None
+        self.__cache_occupancy_map = None
+        self.__cache_clear_movement_map = None
+
     def invalid_region(self, position, scale):
         """
             Invalidates the region surrounding a single block.
             This should be used after the robot changes the environment for any reason.
         """
+        self.invalidate_cache()
+
         block_locations = self.predict_block_locations()
 
         invalidation_region = scale * INVALIDATION_REGION / 2
@@ -73,6 +85,7 @@ class MappingController:
         """
             A robot has just read a block color, log this block position to the world map.
         """
+        self.invalidate_cache()
         invalidation_region = INVALIDATION_REGION
 
         # Old map might have just become illegal, fix it now
@@ -86,6 +99,8 @@ class MappingController:
             Processes a pair of sensor measurements and updates the internal probability maps based on the reading.
             It is assumed that these sensor lie on either end of the robot's arm.
         """
+        self.invalidate_cache()
+
         robot_position = self.__robot_positions_ref[robot_name].position
 
         sensor_bearings = (
@@ -120,7 +135,11 @@ class MappingController:
                 its been explored and nothing was found.
             NOTE: This does not account for robot width, take care
         """
-        return self.fuzzy_mapping.get_clear_movement_map(self.hard_mapping.confirmed_blocks)
+        if self.__cache_clear_movement_map is not None:
+            return self.__cache_clear_movement_map
+
+        self.__cache_clear_movement_map = self.fuzzy_mapping.get_clear_movement_map(self.hard_mapping.confirmed_blocks)
+        return self.__cache_clear_movement_map
 
     def get_explore_status_map(self):
         """
@@ -135,13 +154,17 @@ class MappingController:
             1 - Certainly contains a object
             0 - Either unexplored or empty
         """
+        if self.__cache_occupancy_map is not None:
+            return self.__cache_occupancy_map
 
-        return self.fuzzy_mapping.get_occupancy_map()
+        self.__cache_occupancy_map = self.fuzzy_mapping.get_occupancy_map()
+        return self.__cache_occupancy_map
 
     def add_drop_off_region(self, position):
         """
             The block has been dropped off. Block should be excluded from all future scans.
         """
+        self.invalidate_cache()
         self.hard_mapping.add_drop_off_region(position)
 
     def predict_block_locations(self):
@@ -149,9 +172,14 @@ class MappingController:
             Returns a list of ClusterLocation objects, containing the positions of blocks
             and the relative certainties.
         """
-        occupancy_map = self.fuzzy_mapping.get_occupancy_map()
+        if self.__cache_block_locations is not None:
+            return self.__cache_block_locations
+
+        occupancy_map = self.get_occupancy_map()
         cluster_candidates = self.fuzzy_mapping.generate_potential_clusters()
-        return self.hard_mapping.predict_block_locations(cluster_candidates, occupancy_map)
+
+        self.__cache_block_locations = self.hard_mapping.predict_block_locations(cluster_candidates, occupancy_map)
+        return self.__cache_block_locations
 
     def output_to_displays(self):
         occupancy_map = util.get_intensity_map_pixels(self.get_occupancy_map())
