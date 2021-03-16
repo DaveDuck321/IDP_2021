@@ -99,11 +99,11 @@ class ClusterLocation:
         self.total_weight = total_weight
         self.radius = radius
         self.color = None
-        self.known_index = None
+        self.known_block = None
 
-    def assign_known_color(self, known_index, color):
-        self.known_index = known_index
-        self.color = color
+    def assign_known_color(self, known_block):
+        self.known_block = known_block
+        self.color = known_block[1]
 
     def merge_cluster(self, other):
         """
@@ -137,11 +137,12 @@ class ExactMapping:
 
         # Remove each block in a known position
         for cluster in block_locations:
-            if util.get_distance(cluster.coord, position) < cluster.radius:
-                invalidation_size = max(invalidation_size, cluster.radius)
-                if(cluster.known_index is not None):
+            invalidation_radius = max(invalidation_size, cluster.radius)
+
+            if util.get_distance(cluster.coord, position) < invalidation_radius:
+                if(cluster.known_block is not None):
                     print("[info] Block in invalidation cluster, removing")
-                    self.confirmed_blocks.pop(cluster.known_index)
+                    self.confirmed_blocks.remove(cluster.known_block)
 
         # Also delete overlapping blocks if they are not in a cluster
         for index in range(len(self.confirmed_blocks) - 1, 0, -1):
@@ -163,7 +164,8 @@ class ExactMapping:
         clusters = get_cluster_average(cluster_candidates, occupancy_map)
 
         # Some block colors are known, mark these in the clusters object
-        for index, (block_location, block_color) in enumerate(self.confirmed_blocks):
+        for block in self.confirmed_blocks:
+            block_location, block_color = block
             # Check if block is in radius of any clusters
             color_consumed = False
 
@@ -178,11 +180,11 @@ class ExactMapping:
                     if (cluster.color is not None):
                         print("[Warning] Multiple blocks identified in the same cluster")
 
-                    if color_consumed:
-                        print("[Warning] The same blocks has been assigned to multiple clusters")
+                    # if color_consumed:
+                    #    print("[Warning] The same blocks has been assigned to multiple clusters")
 
                     color_consumed = True
-                    cluster.assign_known_color(index, block_color)
+                    cluster.assign_known_color(block)
 
                 if cluster_distance < closest_cluster.distance:
                     closest_cluster = ClosestCluster(
@@ -197,7 +199,7 @@ class ExactMapping:
                 new_cluster = ClusterLocation(
                     block_location, 20, 10, mapping.BLOCK_OBSTACLE_WIDTH
                 )
-                new_cluster.assign_known_color(index, block_color)
+                new_cluster.assign_known_color(block)
                 clusters.append(new_cluster)
 
         return clusters

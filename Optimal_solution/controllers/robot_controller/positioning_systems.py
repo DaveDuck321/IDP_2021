@@ -1,6 +1,7 @@
 from common import util
 import math
 
+ARM_RADIUS = 0.15  # 150 mm
 SPEED_OF_SOUND = 343
 PINCER_OFFSET = 0.1
 

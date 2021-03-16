@@ -1,5 +1,3 @@
-
-
 class IRSensor:
     def __init__(self, sensor, polling_rate):
         """
@@ -27,7 +25,7 @@ class IRSensor:
         y = float('inf')
         if x is None:
             print('[Warning]: Attempted IR sensor reading when no data available')
-            return y 
+            return y
         if x > 654:  # maximum received value from sensor, anything more is too close
             # print("attempted to calculate distance for value closer than sensor capability")
             return y
@@ -35,4 +33,15 @@ class IRSensor:
             (r1, r2), (d1, d2) = val_pair
             if r2 <= x < r1:
                 y = ((x - r1) / (r2 - r1) * (d2 - d1)) + d1
-        return y + 0.006 # changed due to a change in noise
+        return y + 0.006  # changed due to a change in noise
+
+
+class PassiveIR:
+    def __init__(self, sensor, polling_rate):
+        self._sensor = IRSensor(sensor, polling_rate)
+        self._reading_history = [0, 0, 0]
+
+    def get_distance(self):
+        self._reading_history.append(self._sensor.get_distance())
+        self._reading_history.pop(0)
+        return sum(self._reading_history) / len(self._reading_history)

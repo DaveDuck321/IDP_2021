@@ -7,22 +7,21 @@ import numpy as np
 
 
 ARM_RADIUS = 0.15  # 150 mm
-BLOCK_WIDTH = 6  # In px
+BLOCK_WIDTH = 12  # In px
 BLOCK_OBSTACLE_WIDTH = 0.1
 ROBOT_RADIUS = 1.4 * ARM_RADIUS
 ULTRASOUND_MINIMUM_READING = 0.1
 ULTRASOUND_RANGE = 1.5  # 1.5 m
 ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 3 cm
 ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 degrees total FOV
-WORLD_BOUNDS = np.array([1.2 - 0.01, 1.2 - 0.01])  # UPDATE THIS WITH WORLD FILE
 WORLD_RESOLUTION = 50  # px per meter (reduce for faster computation)
 MAP_RESULTION = (
-    int(2 * WORLD_RESOLUTION * WORLD_BOUNDS[0]),
-    int(2 * WORLD_RESOLUTION * WORLD_BOUNDS[1])
+    int(2 * WORLD_RESOLUTION * util.WORLD_BOUNDS[0]),
+    int(2 * WORLD_RESOLUTION * util.WORLD_BOUNDS[1])
 )
 
 # Region what will be invalidated when a block is collected
-INVALIDATION_REGION = ROBOT_RADIUS
+INVALIDATION_REGION = 2 * ROBOT_RADIUS
 CLUSTER_BLOCK_OVERLAP = 0.8
 CLUSTER_OVERLAP_THRESHOLD = 0.8
 CLUSTER_PROXIMITY_THRESHOLD = 0.1
@@ -31,11 +30,11 @@ FORCE_INVAILD_THRESHOLD = 0.5
 
 
 def _to_screenspace(coord):
-    return util.to_screenspace(coord, WORLD_BOUNDS, MAP_RESULTION)
+    return util.to_screenspace(coord, util.WORLD_BOUNDS, MAP_RESULTION)
 
 
 def _to_worldspace(coord):
-    return util.to_worldspace(coord, WORLD_BOUNDS, MAP_RESULTION)
+    return util.to_worldspace(coord, util.WORLD_BOUNDS, MAP_RESULTION)
 
 
 def get_sensor_position(robot_pos, sensor_angle):
@@ -74,6 +73,12 @@ class MappingController:
         """
             A robot has just read a block color, log this block position to the world map.
         """
+        invalidation_region = INVALIDATION_REGION / 2
+
+        # Old map might have just become illegal, fix it now
+        self.hard_mapping.invalid_region([], block_location, invalidation_region)
+        self.fuzzy_mapping.invalid_region(block_location, invalidation_region)
+
         self.hard_mapping.update_with_color_reading(block_location, block_color)
 
     def update_with_scan_result(self, robot_name, robot_bearing, arm_angle, sensor_readings):
@@ -171,16 +176,16 @@ class MappingController:
         # Output movement status map, marking block locations
         movement_status = util.get_intensity_map_pixels(self.get_clear_movement_map())
 
+        # Output confirmed block positions
+        for (block_location, _) in self.hard_mapping.confirmed_blocks:
+            coord = _to_screenspace(block_location)
+            movement_status[coord[0], coord[1], :] = (255, 0, 255)
+
         for block_location in block_locations:
             coord = _to_screenspace(block_location.coord)
             block_color = util.get_robot_color(block_location.color)
 
             movement_status[coord[0], coord[1], :] = block_color
-
-        # Output confirmed block positions
-        for (block_location, _) in self.hard_mapping.confirmed_blocks:
-            coord = _to_screenspace(block_location)
-            movement_status[coord[0], coord[1], :] = (255, 0, 255)
 
         # Output to display
         util.display_numpy_pixels(self._display_explored, movement_status)

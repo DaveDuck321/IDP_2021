@@ -23,7 +23,7 @@ class PincerController:
 
     def open_pincer(self):
         self._timer += 1
-        open_angle = math.pi / 4.0
+        open_angle = math.pi / 5.0
         self.left_motor.setPosition(open_angle)
         self.right_motor.setPosition(-open_angle)
         if self._timer > self.PINCER_TIMER:

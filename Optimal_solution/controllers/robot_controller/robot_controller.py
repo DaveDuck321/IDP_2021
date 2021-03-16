@@ -10,7 +10,7 @@ from positioning_systems import PositioningSystem
 from pincer_controller import PincerController
 from ultrasonic_emulator import RealUltrasonic
 from scanning import ServoArmController
-from infrared_controller import IRSensor
+from infrared_controller import PassiveIR
 from color_sensor import ColorSensor
 from IR_block_search import BlockSearch
 from reverse_away import Reversing
@@ -83,7 +83,7 @@ class RobotController:
             sampling_rate=sensor_polling
         )
 
-        self.IR_sensor = IRSensor(self.robot.getDevice("IR sensor"), sensor_polling)
+        self.IR_sensor = PassiveIR(self.robot.getDevice("IR sensor"), sensor_polling)
 
         # Start with the pincer fully open
         self.pincer_controller.open_pincer()
@@ -112,6 +112,7 @@ class RobotController:
             Take action on the received message.
         """
         if isinstance(message, protocol.KillImmediately):
+            print(f"[INFO] Killed robot {self.robot.getName()}")
             self.queued_task = Tasks.DEAD
 
         elif isinstance(message, protocol.GiveRobotTarget):
@@ -124,13 +125,12 @@ class RobotController:
         elif isinstance(message, protocol.AskRobotSearch):
             # self.requested_target = message.target
             # Ensure robot isn't already searching
-            if self.current_task != Tasks.FACE_TARGET_SEARCH and self.current_task != Tasks.SEARCHING_BLOCK:
-                self.locked_target = message.target
+            if self.current_task == Tasks.NONE or self.current_task == Tasks.FOLLOWING_CONTROLLER:
                 self.queued_task = Tasks.FACE_TARGET_SEARCH
 
         elif isinstance(message, protocol.AskRobotDeposit):
             # Robot should only attempt to deposit block if all other actions are finished
-            if self.current_task != Tasks.NONE:
+            if self.current_task == Tasks.NONE or self.current_task == Tasks.FOLLOWING_CONTROLLER:
                 self.queued_task = Tasks.DEPOSITING_BLOCK
 
         else:
@@ -227,6 +227,9 @@ class RobotController:
         # Update the controller
         self.send_new_scan()
 
+        # Ensure IR readings are upto-date
+        self.IR_sensor.get_distance()
+
         # Execute the current task
         if self.current_task == Tasks.FOLLOWING_CONTROLLER:
             # Ensure robot knows where to go. If not, wait for instructions
@@ -237,6 +240,9 @@ class RobotController:
 
             # Also scan while driving
             self.scanning_controller.driving_scan(self.positioning_system)
+
+            # if not self.pincer_controller.is_closed and self.IR_sensor.get_distance() < BlockSearch.MAX_BLOCK_DIST:
+            #    self.queued_task = Tasks.SEARCHING_BLOCK
 
         elif self.current_task == Tasks.INITIAL_SCAN:
             if self.scanning_controller.stationary_scan(self.positioning_system):
@@ -253,9 +259,10 @@ class RobotController:
                 self.queued_task = Tasks.SCANNING_COLOR
 
             elif result == BlockSearch.FAILED or result == BlockSearch.TIMEOUT:
-                self.queued_task = Tasks.NONE
+                self.queued_task = Tasks.REVERSING
 
         elif self.current_task == Tasks.SCANNING_COLOR:
+            self.drive_controller.halt()
             block_color = self.color_sensor.scan_color()
             color_name = util.get_robot_color_string(block_color)
 

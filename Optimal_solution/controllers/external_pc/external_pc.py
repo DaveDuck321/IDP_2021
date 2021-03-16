@@ -15,12 +15,8 @@ from pathfinding import PathfindingController
 
 GOAL_TOLERANCE = 0.3
 ROBOT_TAKEOVER_DISTANCE = 0.2
-ROBOT_SPAWN = {
-    "Fluffy": (0.0, -0.28),
-    "Small": (0.0, 0.28),
-}
 
-TIME_STEP = 5
+TIME_STEP = 20
 RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block"])
 
 
@@ -114,17 +110,21 @@ class ExternalController:
             )
 
         elif isinstance(message, protocol.ReportBlockColor):
+            print("Block color reported")
+            self.robot_paths[message.robot_name].reset_votes()
             if message.color != message.robot_name:
                 # The robot failed to pickup block due to its color, report this
                 self.mapping_controller.update_with_color_reading(message.block_position, message.color)
             else:
                 # The robot was the correct color so is now moving the block
                 # Invalidate this old region now that it has changed
-                self.robot_paths[message.robot_name].reset_votes()
                 self.mapping_controller.invalid_region(message.block_position)
 
         elif isinstance(message, protocol.ReportBlockDropoff):
+            self.robot_paths[message.robot_name].reset_votes()
+
             self.mapping_controller.add_drop_off_region(message.block_position)
+            self.pathfinding.add_dropoff(message.block_position)
             self.robot_dropoffs[message.robot_name] += 1
 
             # Kill robot if it has just dropped off its block
@@ -150,7 +150,7 @@ class ExternalController:
         robot_position = self.robot_states[robot_name].position
         block_locations = self.mapping_controller.predict_block_locations()
         closest_path = self.pathfinding.get_nearest_block_path(
-            block_locations, robot_name,
+            block_locations, robot_name, self.robot_paths,
             robot_position
         )
 
@@ -196,7 +196,7 @@ class ExternalController:
         """
         robot_position = self.robot_states[robot_name].position
         closest_path = self.pathfinding.get_robot_path(
-            robot_name, robot_position, ROBOT_SPAWN[robot_name]
+            robot_name, self.robot_paths, robot_position, util.ROBOT_SPAWN[robot_name]
         )
 
         # Check if it was possible to find a path
@@ -237,7 +237,7 @@ class ExternalController:
 
         # Debug visualizations
         block_locations = self.mapping_controller.predict_block_locations()
-        self.pathfinding.output_to_display(self.robot_states, block_locations)
+        self.pathfinding.output_to_display(self.robot_states, block_locations, self.robot_paths)
         self.mapping_controller.output_to_displays()
 
 

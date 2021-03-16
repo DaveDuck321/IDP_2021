@@ -1,4 +1,10 @@
 import math
+from common import util
+
+WALL_REJECTION_FRAC = 0.9
+SEARCH_ANGLE = math.pi / 2.0   # angle of total search area, centered on initial direction
+MAX_BLOCK_DIST = 0.4           # max distance away a block would be detected in m
+BLOCK_IN_GRABBER_DIST = 0.15   # distance reading when block in grabber
 
 
 class BlockSearch:
@@ -7,22 +13,17 @@ class BlockSearch:
     FOUND_BLOCK = 1
     TIMEOUT = 2
 
-    def __init__(self, IR_sensor, positioning_system, drive_controller, pincer_controller):
-        self.SEARCH_ANGLE = math.pi / 3.0   # angle of total search area, centered on initial direction
-        self.MAX_BLOCK_DIST = 0.4           # max distance away a block would be detected in m
-        self.BLOCK_IN_GRABBER_DIST = 0.15   # distance reading when block in grabber
-
+    def __init__(self, ir_sensor, positioning_system, drive_controller, pincer_controller):
         self.positioning_system = positioning_system
         self.drive_controller = drive_controller
-        self.IR_sensor = IR_sensor
+        self.IR_sensor = ir_sensor
         self.pincer_controller = pincer_controller
 
-        self.target_angle = (self.positioning_system.get_world_bearing() + (self.SEARCH_ANGLE / 2.0)) % (2 * math.pi)
+        self.target_angle = (self.positioning_system.get_world_bearing() + (SEARCH_ANGLE / 2.0)) % (2 * math.pi)
         self.min_IR_dist = math.inf
         self.min_IR_angle = None
         self.block_found = False
         self.sweeping_back = False
-        self.rolling_IR_readings = [self.IR_sensor.get_distance()] * 3
 
         self.FUBAR_timer = 250
 
@@ -30,14 +31,17 @@ class BlockSearch:
         self.drive_controller.halt()
 
     def __call__(self):
-        self.rolling_IR_readings.append(self.IR_sensor.get_distance())
-        self.rolling_IR_readings.pop(0)
+        IR_dist = self.IR_sensor.get_distance()
 
-        IR_dist = sum(self.rolling_IR_readings) / len(self.rolling_IR_readings)
+        wall_dist = WALL_REJECTION_FRAC * util.get_static_distance(
+            self.positioning_system.get_2D_position(),
+            self.positioning_system.get_world_bearing(),
+            [], []
+        )
 
         if not self.block_found:
             # Run the sweeping search using IR sensor to find direction of block
-            if IR_dist < self.MAX_BLOCK_DIST:
+            if IR_dist < min(MAX_BLOCK_DIST, wall_dist):
                 self.min_IR_angle = self.positioning_system.get_world_bearing()
                 self.block_found = True
                 self.sweeping_back = False
@@ -45,9 +49,9 @@ class BlockSearch:
             if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.target_angle):
                 if not self.sweeping_back:
                     self.sweeping_back = True
-                    self.target_angle = (self.target_angle - self.SEARCH_ANGLE + 2 * math.pi) % (2 * math.pi)
+                    self.target_angle = (self.target_angle - SEARCH_ANGLE + 2 * math.pi) % (2 * math.pi)
                 else:
-                    if IR_dist < self.MAX_BLOCK_DIST:
+                    if IR_dist < min(MAX_BLOCK_DIST, wall_dist):
                         print("[Info]: Block Detected")
                         self.block_found = True
                         self.sweeping_back = False
@@ -67,7 +71,7 @@ class BlockSearch:
                     print('[Warning]: Took too long to reach block')
                     return self.TIMEOUT
 
-                if IR_dist > self.BLOCK_IN_GRABBER_DIST:
+                if IR_dist > BLOCK_IN_GRABBER_DIST:
                     self.drive_controller.drive_forward()
                 else:
                     if self.pincer_controller.close_pincer():

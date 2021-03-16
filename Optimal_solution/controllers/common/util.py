@@ -1,6 +1,12 @@
 import numpy as np
 from controller import Display
 
+WORLD_BOUNDS = np.array([1.2 - 0.01, 1.2 - 0.01])  # UPDATE THIS WITH WORLD FILE
+ROBOT_SPAWN = {
+    "Fluffy": (0.0, -0.28),
+    "Small": (0.0, 0.28),
+}
+
 
 def filter_nans(iterator, default=np.inf):
     """
@@ -127,3 +133,38 @@ def to_screenspace(coord, world_bounds, map_resolution):
 def to_worldspace(_coord, world_bounds, map_resolution):
     coord = np.array([_coord[1], _coord[0]])
     return (2 * (coord / map_resolution) - 1) * world_bounds
+
+
+def get_static_distance(sensor_pos, sensor_facing, obstacles_pos, obstacles_radius):
+    """
+        Returns the ray distance to the nearest static obstacle.
+    """
+    # Collisions with walls
+    x_dir = np.cos(sensor_facing)
+    y_dir = np.sin(sensor_facing)
+
+    dist_right = (WORLD_BOUNDS[0] - sensor_pos[0]) / x_dir
+    dist_left = (-WORLD_BOUNDS[0] - sensor_pos[0]) / x_dir
+
+    dist_top = (WORLD_BOUNDS[1] - sensor_pos[1]) / y_dir
+    dist_bottom = (-WORLD_BOUNDS[1] - sensor_pos[1]) / y_dir
+
+    combined_array = np.array([dist_right, dist_left, dist_top, dist_bottom])
+
+    # Collisions with other robots and static obstacles
+    for obstacle_pos, obstacle_radius in zip(obstacles_pos, obstacles_radius):
+        a = x_dir ** 2 + y_dir ** 2
+        b = 2 * x_dir * (sensor_pos[0] - obstacle_pos[0]) + 2 * y_dir * (sensor_pos[1] - obstacle_pos[1])
+        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - obstacle_radius**2
+
+        # Filter invalid values
+        determinant = b**2 - 4 * a * c
+        mask = np.logical_and(determinant > 0, a != 0)
+        a, b, determinant = a[mask], b[mask], determinant[mask]
+
+        distance_outer = (-b - determinant) / (2 * a)
+        distance_inner = (-b + determinant) / (2 * a)
+        distances = np.append(distance_outer, distance_inner)
+        combined_array = np.append(combined_array, distances)
+
+    return np.amin(combined_array[combined_array > 0])

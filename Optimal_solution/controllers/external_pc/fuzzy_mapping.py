@@ -1,5 +1,6 @@
 import numpy as np
 import mapping
+from common import util
 
 
 def _ultrasound_pdf(mean, x):
@@ -14,42 +15,7 @@ def estimate_measured_static_distance(sensor_pos, sensor_facing, obstacles_pos, 
         were facing at bearing sensor_facing and had no unknown targets.
     """
     angles = sensor_facing + np.linspace(-mapping.ULTRASOUND_ANGLE, mapping.ULTRASOUND_ANGLE, 30)
-    return get_static_distance(sensor_pos, angles, obstacles_pos, obstacles_radius)
-
-
-def get_static_distance(sensor_pos, sensor_facing, obstacles_pos, obstacles_radius):
-    """
-        Returns the ray distance to the nearest static obstacle.
-    """
-    # Collisions with walls
-    x_dir = np.cos(sensor_facing)
-    y_dir = np.sin(sensor_facing)
-
-    dist_right = (mapping.WORLD_BOUNDS[0] - sensor_pos[0]) / x_dir
-    dist_left = (-mapping.WORLD_BOUNDS[0] - sensor_pos[0]) / x_dir
-
-    dist_top = (mapping.WORLD_BOUNDS[1] - sensor_pos[1]) / y_dir
-    dist_bottom = (-mapping.WORLD_BOUNDS[1] - sensor_pos[1]) / y_dir
-
-    combined_array = np.array([dist_right, dist_left, dist_top, dist_bottom])
-
-    # Collisions with other robots and static obstacles
-    for obstacle_pos, obstacle_radius in zip(obstacles_pos, obstacles_radius):
-        a = x_dir ** 2 + y_dir ** 2
-        b = 2 * x_dir * (sensor_pos[0] - obstacle_pos[0]) + 2 * y_dir * (sensor_pos[1] - obstacle_pos[1])
-        c = (sensor_pos[0] - obstacle_pos[0])**2 + (sensor_pos[1] - obstacle_pos[1])**2 - obstacle_radius**2
-
-        # Filter invalid values
-        determinant = b**2 - 4 * a * c
-        mask = np.logical_and(determinant > 0, a != 0)
-        a, b, determinant = a[mask], b[mask], determinant[mask]
-
-        distance_outer = (-b - determinant) / (2 * a)
-        distance_inner = (-b + determinant) / (2 * a)
-        distances = np.append(distance_outer, distance_inner)
-        combined_array = np.append(combined_array, distances)
-
-    return np.amin(combined_array[combined_array > 0])
+    return util.get_static_distance(sensor_pos, angles, obstacles_pos, obstacles_radius)
 
 
 class UltrasoundMapping:
@@ -60,8 +26,8 @@ class UltrasoundMapping:
 
     def __init__(self):
         # For fast numpy computation
-        self._x = np.linspace(-mapping.WORLD_BOUNDS[0], mapping.WORLD_BOUNDS[0], mapping.MAP_RESULTION[0])
-        self._y = np.linspace(-mapping.WORLD_BOUNDS[1], mapping.WORLD_BOUNDS[1], mapping.MAP_RESULTION[1])
+        self._x = np.linspace(-util.WORLD_BOUNDS[0], util.WORLD_BOUNDS[0], mapping.MAP_RESULTION[0])
+        self._y = np.linspace(-util.WORLD_BOUNDS[1], util.WORLD_BOUNDS[1], mapping.MAP_RESULTION[1])
         self._xx, self._yy = np.meshgrid(self._x, self._y)
 
         # Contains the probabilities of finding a block in each location

@@ -1,4 +1,3 @@
-import mapping
 from common import util
 
 import numpy as np
@@ -11,11 +10,11 @@ EMPTY_MAP = np.zeros(SIMPLIFIED_RESOLUTION, dtype=np.bool8)
 
 
 def _to_screenspace(coord):
-    return util.to_screenspace(coord, mapping.WORLD_BOUNDS, SIMPLIFIED_RESOLUTION)
+    return util.to_screenspace(coord, util.WORLD_BOUNDS, SIMPLIFIED_RESOLUTION)
 
 
 def _to_worldspace(coord):
-    return util.to_worldspace(coord, mapping.WORLD_BOUNDS, SIMPLIFIED_RESOLUTION)
+    return util.to_worldspace(coord, util.WORLD_BOUNDS, SIMPLIFIED_RESOLUTION)
 
 
 def dilate(grid, iterations=1):
@@ -30,9 +29,8 @@ def dilate(grid, iterations=1):
 
 
 class PathfindingResult:
-    def __init__(self, pathmask, waypoints, length, goal_pos, success=True):
+    def __init__(self, waypoints, length, goal_pos, success=True):
         self.success = success
-        self.pathmask = pathmask
         self.waypoints = waypoints
         self.length = length
         self.goal_pos = goal_pos
@@ -40,17 +38,19 @@ class PathfindingResult:
     @classmethod
     def NotFound(cls, goal_pos):
         return cls(
-            EMPTY_MAP, [], np.inf,
+            [], np.inf,
             goal_pos, success=False
         )
 
 
 class PathfindingController:
     def __init__(self, display):
-        self.path_masks = {}
-
         self._display = display
         self._simple_map = None
+        self._blockers = []
+
+        for robot_name in util.ROBOT_SPAWN:
+            self._blockers.append(tuple(_to_screenspace(util.ROBOT_SPAWN[robot_name])))
 
     def _generate_simple_map(self, raw_arena_map):
         """
@@ -76,24 +76,35 @@ class PathfindingController:
                 if obstacle_density > SIGNIFICANT_OBSTACLE_DENSITY:
                     simple_map[x, y] = True
 
+        for blocker in self._blockers:
+            simple_map[blocker] = True  # Don't allow robots to enter spawn
+
         # Flip bits to correct to standard format
         self._simple_map = np.invert(simple_map)
 
-    def _generate_cooperation_map(self, robot_name):
+    def _generate_cooperation_map(self, robot_name, other_robot_paths):
         """
             Returns a simple map for use in pathfinding. Preexisting robot paths are marked as invalid regions.
         """
         cooperation_map = np.invert(self._simple_map)
 
         # Mask off other robot paths
-        for other_robot in self.path_masks:
-            if other_robot != robot_name:
-                cooperation_map |= self.path_masks[other_robot]
+        for other_robot in other_robot_paths:
+            if other_robot == robot_name:
+                continue
+
+            for waypoint in other_robot_paths[other_robot].waypoints:
+                coord = tuple(_to_screenspace(waypoint))
+                cooperation_map[coord] = True
 
         # Return this map to the standard format
         return np.invert(cooperation_map)
 
-    def output_to_display(self, robot_states, clusters):
+    def add_dropoff(self, position):
+        coord = tuple(_to_screenspace(position))
+        self._blockers.append(coord)
+
+    def output_to_display(self, robot_states, clusters, other_paths):
         """
             Outputs the current calculated routes and map to the Webots display
         """
@@ -105,9 +116,12 @@ class PathfindingController:
             output_map[tuple(_to_screenspace(cluster.coord))] = color
 
         # Draw any calculated paths
-        for robot_name in self.path_masks:
+        for robot_name in other_paths:
             color = util.get_robot_color(robot_name)
-            output_map[self.path_masks[robot_name]] = color
+
+            for waypoint in other_paths[robot_name].waypoints:
+                coord = tuple(_to_screenspace(waypoint))
+                output_map[coord] = color
 
         # Draw the robots:
         for robot_name in robot_states:
@@ -123,7 +137,7 @@ class PathfindingController:
         """
         self._generate_simple_map(raw_arena_map)
 
-    def __calculate_route(self, robot_name, start_pos, goal_pos):
+    def __calculate_route(self, robot_name, other_paths, start_pos, goal_pos):
         """
             Uses A* algorithm and knowledge of current path of other robot, along with obstacles
             in arena to avoid collisions and find shortest path and convert that into a list of
@@ -145,7 +159,7 @@ class PathfindingController:
             (1, -1, DIAGONAL_STEP)
         ], dtype=np.int32)
 
-        pathfinding_map = self._simple_map  # self._generate_cooperation_map(robot_name)
+        pathfinding_map = self._simple_map | self._generate_cooperation_map(robot_name, other_paths)
         costs = np.inf * np.ones(SIMPLIFIED_RESOLUTION)
         directions = np.empty(SIMPLIFIED_RESOLUTION, dtype=np.int32)
 
@@ -191,25 +205,17 @@ class PathfindingController:
         if np.isinf(costs[goal]):
             return PathfindingResult.NotFound(goal_pos)
 
-        # Mask to avoid collisions with other robots
-        pathmask = np.zeros(SIMPLIFIED_RESOLUTION, dtype=np.bool8)
-
         # Create a list of waypoints for the robot to navigate along
         waypoints = [tuple(goal_pos)]
 
         # backtrack from the goal following the saved directions used to reach each square
         current_coord = goal
         direction_index = directions[current_coord]
-        pathmask[current_coord] = True
-
         while current_coord != start:
             current_coord = (
                 current_coord[0] - walks[direction_index][0],
                 current_coord[1] - walks[direction_index][1]
             )
-
-            # Record this on the mask
-            pathmask[current_coord] = True
 
             # Bad edge case here, the algorithm really should have accommodated this from the start
             if current_coord == start:
@@ -227,21 +233,16 @@ class PathfindingController:
         penultimate_cost = costs[penultimate_coord]
         cost_approximation = penultimate_cost + util.get_distance(goal_pos, _to_worldspace(penultimate_coord))
 
-        return PathfindingResult(pathmask, waypoints[::-1], cost_approximation, goal_pos)
+        return PathfindingResult(waypoints[::-1], cost_approximation, goal_pos)
 
-    def get_robot_path(self, robot_name, robot_pos, goal_pos):
+    def get_robot_path(self, robot_name, other_paths, robot_pos, goal_pos):
         """
             Finds the shortest path from the current robot to a goal.
             Avoids collisions with the environment and the other robots.
         """
-        route = self.__calculate_route(robot_name, robot_pos, goal_pos)
+        return self.__calculate_route(robot_name, other_paths, robot_pos, goal_pos)
 
-        # Avoid collisions with future pathfinding
-        self.path_masks[robot_name] = route.pathmask
-
-        return route
-
-    def get_nearest_block_path(self, clusters, robot_name, robot_pos):
+    def get_nearest_block_path(self, clusters, robot_name, other_paths, robot_pos):
         """
             Find the shortest path from the current robot to any block (of the correct color).
             Avoids collisions with the environment and the other robots.
@@ -256,14 +257,9 @@ class PathfindingController:
                 continue
 
             # Calculate the route for this block
-            route = self.__calculate_route(robot_name, robot_pos, cluster.coord)
+            route = self.__calculate_route(robot_name, other_paths, robot_pos, cluster.coord)
 
             if route.length < shortest_path.length:
                 shortest_path = route
-                self.path_masks[robot_name] = shortest_path.pathmask
-
-        # If no paths are found, delete any pending paths
-        if not shortest_path.success:
-            self.path_masks[robot_name] = EMPTY_MAP
 
         return shortest_path
