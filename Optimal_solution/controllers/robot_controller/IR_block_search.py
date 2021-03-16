@@ -25,6 +25,8 @@ class BlockSearch:
         self.block_found = False
         self.sweeping_back = False
 
+        self.closing_pincer = False
+
         self.FUBAR_timer = 250
 
     def clean(self):
@@ -38,6 +40,12 @@ class BlockSearch:
             self.positioning_system.get_world_bearing(),
             [], []
         )
+
+        # The old pincer code didn't work
+        if self.closing_pincer:
+            if self.pincer_controller.close_pincer():
+                return self.FOUND_BLOCK
+            return self.IN_PROGRESS
 
         if not self.block_found:
             # Run the sweeping search using IR sensor to find direction of block
@@ -74,6 +82,5 @@ class BlockSearch:
                 if IR_dist > BLOCK_IN_GRABBER_DIST:
                     self.drive_controller.drive_forward()
                 else:
-                    if self.pincer_controller.close_pincer():
-                        return self.FOUND_BLOCK
+                    self.closing_pincer = True
         return False

@@ -110,7 +110,7 @@ class ExternalController:
             )
 
         elif isinstance(message, protocol.IRReportFailed):
-            self.mapping_controller.invalid_region(message.block_position, 2)
+            self.mapping_controller.invalid_region(message.block_position, 1)
 
         elif isinstance(message, protocol.ReportBlockColor):
             print("Block color reported")
@@ -121,7 +121,7 @@ class ExternalController:
             else:
                 # The robot was the correct color so is now moving the block
                 # Invalidate this old region now that it has changed
-                self.mapping_controller.invalid_region(message.block_position, 2)
+                self.mapping_controller.invalid_region(message.block_position, 1)
 
         elif isinstance(message, protocol.ReportBlockDropoff):
             self.robot_paths[message.robot_name].reset_votes()
@@ -153,7 +153,7 @@ class ExternalController:
         robot_position = self.robot_states[robot_name].position
         block_locations = self.mapping_controller.predict_block_locations()
         closest_path = self.pathfinding.get_nearest_block_path(
-            block_locations, robot_name, self.robot_paths,
+            block_locations, robot_name, self.robot_states, self.robot_paths,
             robot_position
         )
 
@@ -199,7 +199,7 @@ class ExternalController:
         """
         robot_position = self.robot_states[robot_name].position
         closest_path = self.pathfinding.get_robot_path(
-            robot_name, self.robot_paths, robot_position, util.ROBOT_SPAWN[robot_name]
+            robot_name, self.robot_states, self.robot_paths, robot_position, util.ROBOT_SPAWN[robot_name]
         )
 
         # Check if it was possible to find a path

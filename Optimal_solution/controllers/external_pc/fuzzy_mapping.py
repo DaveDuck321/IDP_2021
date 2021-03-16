@@ -170,7 +170,7 @@ class UltrasoundMapping:
 
         clear_movement_map = np.logical_and(
             self.get_explore_status_map(),
-            self.get_occupancy_map() < 0.005
+            self.get_occupancy_map() < 0.05
         )
 
         for block_position, _ in confirmed_blocks:

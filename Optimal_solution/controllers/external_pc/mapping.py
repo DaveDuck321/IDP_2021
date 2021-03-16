@@ -12,7 +12,7 @@ BLOCK_OBSTACLE_WIDTH = 0.1
 ROBOT_RADIUS = 1.4 * ARM_RADIUS
 ULTRASOUND_MINIMUM_READING = 0.1
 ULTRASOUND_RANGE = 1.5  # 1.5 m
-ULTRASOUND_NOISE = 0.03  # Standard deviation in distance measurement = 3 cm
+ULTRASOUND_NOISE = 0.02  # Standard deviation in distance measurement = 3 cm
 ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 degrees total FOV
 WORLD_RESOLUTION = 50  # px per meter (reduce for faster computation)
 MAP_RESULTION = (
@@ -26,7 +26,7 @@ CLUSTER_FUDGE_DISTANCE = 0.5  # m
 CLUSTER_BLOCK_OVERLAP = 0.8
 CLUSTER_OVERLAP_THRESHOLD = 0.8
 CLUSTER_PROXIMITY_THRESHOLD = 0.1
-CLUSTER_THRESHOLD = 4  # Require 10px to recognize block
+CLUSTER_THRESHOLD = 4  # Require 4px to recognize block
 FORCE_INVAILD_THRESHOLD = 0.5
 
 
