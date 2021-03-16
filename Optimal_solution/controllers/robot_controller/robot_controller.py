@@ -258,7 +258,8 @@ class RobotController:
                 self.queued_task = Tasks.NONE
 
         elif self.current_task == Tasks.NONE:
-            pass  # TODO: maybe query controller here
+            # Scan to update map
+            self.scanning_controller.stationary_scan(self.positioning_system)
 
         elif self.current_task == Tasks.SEARCHING_BLOCK:
             # Algorithm returns code upon completion

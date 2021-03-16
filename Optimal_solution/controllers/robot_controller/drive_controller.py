@@ -61,8 +61,6 @@ class DriveController:
         """
         bearing_error = positioning_system.get_bearing_error(target)
 
-        print(target, bearing_error)
-
         if abs(bearing_error) <= tolerance:
             return True
 

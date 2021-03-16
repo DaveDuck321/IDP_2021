@@ -129,7 +129,6 @@ class ExternalController:
             self.mapping_controller.invalid_region(message.block_position, 1)
 
         elif isinstance(message, protocol.ReportBlockColor):
-            print("Block color reported")
             self.robot_paths[message.robot_name].reset_votes()
             if message.color != message.robot_name:
                 # The robot failed to pickup block due to its color, report this
@@ -227,12 +226,15 @@ class ExternalController:
 
         # Should the robot takeover and deposit the block itself?
         if destination_distance < ROBOT_TAKEOVER_DISTANCE:
+            self.robot_paths[robot_name].reset_votes()
+            self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
             self.radio.send_message(protocol.AskRobotDeposit(
                 robot_name, last_waypoint
             ))
         else:
             # Begin navigating back home
             # Navigate to next waypoint
+            self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
             self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_path.waypoints[0]))
 
     def choose_action_for_robot(self, robot_name):
