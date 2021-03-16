@@ -21,16 +21,6 @@ PROTO IRSensor [
         0.506 123 0.06
         0.806 82 0.1
       ]
-      children [
-        Shape {
-          appearance PBRAppearance {
-            roughness 1
-          }
-          geometry Box {
-            size 0.013 0.0135 0.0295
-          }
-        }
-      ]
       }
     
   }

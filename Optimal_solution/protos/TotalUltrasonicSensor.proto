@@ -20,14 +20,6 @@ PROTO TotalUltrasonicSensor [
           }
   
         %{ end }%
-        Shape {
-            appearance PBRAppearance {
-            roughness 1
-            }
-            geometry Box {
-              size 0.015 0.02 0.045
-            }
-          }
     ]
   }
 }
