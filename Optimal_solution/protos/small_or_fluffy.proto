@@ -80,7 +80,6 @@ children [
         contactMaterial "BallCaster"
         boundingObject USE support
         physics Physics {
-            density 1
         }
         }
         Solid {
@@ -99,7 +98,6 @@ children [
         name "chassis"
         boundingObject USE chassis_base
         physics Physics {
-            density 1
         }
         }
         Solid {
@@ -118,7 +116,6 @@ children [
         name "back"
         boundingObject USE back
         physics Physics {
-            density 1
         }
         }
         IRSensor {
@@ -289,7 +286,6 @@ children [
         name "arm"
         boundingObject USE arm
         physics Physics {
-        density 1
         }
     }
     }
@@ -306,11 +302,10 @@ children [
         }
     ]
     endPoint Solid {
-        translation 0.0950000006372892 -0.02200049983569806 0.027000000029012105
+        translation 0.0950000006372892 -0.03200049983569806 0.027000000029012105
         rotation -5.823100731931722e-07 -0.9999999995186106 -3.102321063182872e-05 0.0004384760190379118
         children [
         Solid {
-            translation 0 -0.01 0
             children [
             DEF right_grabber Group {
                 children [
@@ -339,14 +334,12 @@ children [
             ]
             boundingObject USE right_grabber
             physics Physics {
-            density 1
             }
         }
         ]
         name "right_grabber"
         boundingObject USE right_grabber
         physics Physics {
-        density 1
         }
     }
     }
@@ -363,10 +356,9 @@ children [
         }
     ]
     endPoint Solid {
-        translation 0.09500000102853573 -0.022000699700889546 -0.026999999113786553
+        translation 0.09500000102853573 -0.032000699700889546 -0.026999999113786553
         children [
         Solid {
-            translation 0 -0.01 0
             children [
             DEF left_grabber Group {
                 children [
@@ -395,14 +387,12 @@ children [
             ]
             boundingObject USE left_grabber
             physics Physics {
-            density 1
             }
         }
         ]
         name "left_grabber"
         boundingObject USE left_grabber
         physics Physics {
-        density 1
         }
     }
     }
@@ -410,7 +400,7 @@ children [
 boundingObject USE chassis_base
 physics Physics {
     density -1
-    mass 1.2
+    mass 0.1
     centerOfMass [
     0.01 -0.02 0
     ]
@@ -420,5 +410,4 @@ name IS name
 controller "robot_controller"
 %{ end }%
 }
-
 }

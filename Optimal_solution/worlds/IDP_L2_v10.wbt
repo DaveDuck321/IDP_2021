@@ -44,8 +44,8 @@ Robot {
   children [
     Display {
       name "display_pathfinding"
-      width 8
-      height 8
+      width 16
+      height 16
     }
     Display {
       name "display_explored"
