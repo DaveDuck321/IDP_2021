@@ -131,7 +131,7 @@ class PathfindingController:
             robot_position = tuple(_to_screenspace(robot_states[robot_name].position))
             output_map[robot_position] = color
 
-        #util.display_numpy_pixels(self._display, output_map)
+        util.display_numpy_pixels(self._display, output_map)
 
     def update_map(self, raw_arena_map):
         """
@@ -163,7 +163,7 @@ class PathfindingController:
 
         pathfinding_map = self._simple_map & self._generate_cooperation_map(robot_name, other_paths)
 
-        util.display_numpy_pixels(self._display, pathfinding_map)
+        #util.display_numpy_pixels(self._display, pathfinding_map)
         costs = np.inf * np.ones(SIMPLIFIED_RESOLUTION)
         directions = np.empty(SIMPLIFIED_RESOLUTION, dtype=np.int32)
 
@@ -192,7 +192,7 @@ class PathfindingController:
                 # check if movement is in obstacle
                 # Targets cannot be obstacles
                 if new_pos != goal and (not pathfinding_map[new_pos]):
-                    new_cost += 10
+                    new_cost += 30
 
                 if new_cost >= costs[new_pos] or new_cost >= costs[goal]:
                     continue
