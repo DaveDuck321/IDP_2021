@@ -42,6 +42,22 @@ class ReportBlockColor(Message):
         )
 
 
+class IRReportFailed(Message):
+    def __init__(self, robot_name, block_position):
+        Message.__init__(self, robot_name)
+        self.block_position = block_position
+
+    @staticmethod
+    def get_type():
+        return "ir_report_failed"
+
+    @classmethod
+    def build_from_JSON(cls, json_data):
+        assert json_data["type"] == cls.get_type()
+
+        return cls(json_data["robot_name"], json_data["block_position"])
+
+
 class ReportBlockDropoff(Message):
     def __init__(self, robot_name, block_position):
         Message.__init__(self, robot_name)
@@ -162,6 +178,7 @@ MESSAGE_MAPPINGS = {
     ScanDistanceReading.get_type(): ScanDistanceReading,
     ReportBlockColor.get_type(): ReportBlockColor,
     ReportBlockDropoff.get_type(): ReportBlockDropoff,
+    IRReportFailed.get_type(): IRReportFailed,
 
     # Controller
     GiveRobotTarget.get_type(): GiveRobotTarget,

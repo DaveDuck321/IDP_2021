@@ -124,10 +124,10 @@ def display_numpy_pixels(display, pixels):
 
 
 def to_screenspace(coord, world_bounds, map_resolution):
-    return np.clip(
+    return np.rint(np.clip(
         np.flip((coord + world_bounds) / (2 * world_bounds) * map_resolution),
         (0, 0), (map_resolution[0] - 1, map_resolution[1] - 1)
-    ).astype(int)
+    )).astype(int)
 
 
 def to_worldspace(_coord, world_bounds, map_resolution):

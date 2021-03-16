@@ -194,8 +194,12 @@ class ExactMapping:
 
             if not color_consumed:
                 # Hackfix, no cluster identified properly, assign to closest one
+
+                if closest_cluster.distance < mapping.CLUSTER_FUDGE_DISTANCE:
+                    closest_cluster.cluster.assign_known_color(block)
+                    continue
+
                 # print("[Warning] Block color has been identified but does not exist on map")
-                # closest_cluster.cluster.assign_known_color(index, block_color)
                 new_cluster = ClusterLocation(
                     block_location, 20, 10, mapping.BLOCK_OBSTACLE_WIDTH
                 )

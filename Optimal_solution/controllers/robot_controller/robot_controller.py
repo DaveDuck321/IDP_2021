@@ -38,6 +38,7 @@ class Tasks(Enum):
     DEPOSITING_BLOCK = 6
     SCANNING_COLOR = 7
     REJECT_BLOCK = 8
+    REVERSING_LONG = 9
 
 
 class RobotController:
@@ -123,7 +124,7 @@ class RobotController:
                 self.queued_task = Tasks.FOLLOWING_CONTROLLER
 
         elif isinstance(message, protocol.AskRobotSearch):
-            # self.requested_target = message.target
+            self.requested_target = message.target
             # Ensure robot isn't already searching
             if self.current_task == Tasks.NONE or self.current_task == Tasks.FOLLOWING_CONTROLLER:
                 self.queued_task = Tasks.FACE_TARGET_SEARCH
@@ -156,8 +157,10 @@ class RobotController:
         if about_to_end == Tasks.SEARCHING_BLOCK:
             self.block_searching_algorithm.clean()
             self.block_searching_algorithm = None
-        if about_to_end == Tasks.REVERSING:
+
+        if about_to_end == Tasks.REVERSING or about_to_end == Tasks.REVERSING_LONG:
             self.reversing_algorithm = None
+
         if about_to_end == Tasks.DEPOSITING_BLOCK:
             # Report the exact dropoff position
             self.radio.send_message(protocol.ReportBlockDropoff(
@@ -194,7 +197,12 @@ class RobotController:
         if about_to_start == Tasks.REVERSING:
             self.reversing_algorithm = Reversing(
                 self.drive_controller,
-                100  # Reverse for 10 ticks to ensure robot doesn't collide with hidden blocks
+                200  # Reverse for 10 ticks to ensure robot doesn't collide with hidden blocks
+            )
+        if about_to_start == Tasks.REVERSING_LONG:
+            self.reversing_algorithm = Reversing(
+                self.drive_controller,
+                300  # Reverse for 10 ticks to ensure robot doesn't collide with hidden blocks
             )
         if about_to_start == Tasks.DEPOSITING_BLOCK:
             self.depositing_algorithm = BlockDeposit(
@@ -260,6 +268,10 @@ class RobotController:
 
             elif result == BlockSearch.FAILED or result == BlockSearch.TIMEOUT:
                 self.queued_task = Tasks.REVERSING
+                self.radio.send_message(protocol.IRReportFailed(
+                    self.robot.getName(),
+                    self.positioning_system.get_pincer_position()
+                ))
 
         elif self.current_task == Tasks.SCANNING_COLOR:
             self.drive_controller.halt()
@@ -290,6 +302,8 @@ class RobotController:
                 self.queued_task = Tasks.REVERSING
 
         elif self.current_task == Tasks.FACE_TARGET_SEARCH:
+            self.queued_task = Tasks.SEARCHING_BLOCK
+
             # Algorithm returns True upon completion
             is_finished = self.drive_controller.turn_toward_point(
                 self.positioning_system,
@@ -298,7 +312,7 @@ class RobotController:
             if is_finished:
                 self.queued_task = Tasks.SEARCHING_BLOCK
 
-        elif self.current_task == Tasks.REVERSING:
+        elif self.current_task == Tasks.REVERSING or self.current_task == Tasks.REVERSING_LONG:
             # Algorithm returns True upon completion
             if self.reversing_algorithm():
                 self.queued_task = Tasks.NONE
@@ -307,7 +321,7 @@ class RobotController:
             # Algorithm returns True upon completion
             if self.depositing_algorithm():
                 print("[INFO] Block deposited")
-                self.queued_task = Tasks.REVERSING
+                self.queued_task = Tasks.REVERSING_LONG
 
         else:
             print("[ERROR] Unimplemented task type: ", self.current_task)

@@ -4,8 +4,8 @@ import numpy as np
 import heapq
 
 BLOCK_SIZE = (5, 5)  # In raw map pixels
-SIMPLIFIED_RESOLUTION = (9, 9)
-SIGNIFICANT_OBSTACLE_DENSITY = 5  # Mapping will ignore obstacles of less than 5px
+SIMPLIFIED_RESOLUTION = (16, 16)
+SIGNIFICANT_OBSTACLE_DENSITY = 20  # Mapping will ignore obstacles of less than 5px
 EMPTY_MAP = np.zeros(SIMPLIFIED_RESOLUTION, dtype=np.bool8)
 
 
@@ -76,9 +76,6 @@ class PathfindingController:
                 if obstacle_density > SIGNIFICANT_OBSTACLE_DENSITY:
                     simple_map[x, y] = True
 
-        for blocker in self._blockers:
-            simple_map[blocker] = True  # Don't allow robots to enter spawn
-
         # Flip bits to correct to standard format
         self._simple_map = np.invert(simple_map)
 
@@ -86,7 +83,7 @@ class PathfindingController:
         """
             Returns a simple map for use in pathfinding. Preexisting robot paths are marked as invalid regions.
         """
-        cooperation_map = np.invert(self._simple_map)
+        cooperation_map = np.zeros(SIMPLIFIED_RESOLUTION, dtype=bool)
 
         # Mask off other robot paths
         for other_robot in other_robot_paths:
@@ -97,6 +94,11 @@ class PathfindingController:
                 coord = tuple(_to_screenspace(waypoint))
                 cooperation_map[coord] = True
 
+        # Don't allow robots to enter spawn/ known obstacles
+        for blocker in self._blockers:
+            cooperation_map[blocker] = True
+
+        dilate(cooperation_map)
         # Return this map to the standard format
         return np.invert(cooperation_map)
 
@@ -129,7 +131,7 @@ class PathfindingController:
             robot_position = tuple(_to_screenspace(robot_states[robot_name].position))
             output_map[robot_position] = color
 
-        util.display_numpy_pixels(self._display, output_map)
+        #util.display_numpy_pixels(self._display, output_map)
 
     def update_map(self, raw_arena_map):
         """
@@ -159,7 +161,9 @@ class PathfindingController:
             (1, -1, DIAGONAL_STEP)
         ], dtype=np.int32)
 
-        pathfinding_map = self._simple_map | self._generate_cooperation_map(robot_name, other_paths)
+        pathfinding_map = self._simple_map & self._generate_cooperation_map(robot_name, other_paths)
+
+        util.display_numpy_pixels(self._display, pathfinding_map)
         costs = np.inf * np.ones(SIMPLIFIED_RESOLUTION)
         directions = np.empty(SIMPLIFIED_RESOLUTION, dtype=np.int32)
 
@@ -182,13 +186,14 @@ class PathfindingController:
                 if not util.tuple_in_bound(new_pos, SIMPLIFIED_RESOLUTION):
                     continue
 
+                # if already processed and too expensive, skip reevaluation
+                new_cost = costs[current_pos] + step_dist
+
                 # check if movement is in obstacle
                 # Targets cannot be obstacles
                 if new_pos != goal and (not pathfinding_map[new_pos]):
-                    continue
+                    new_cost += 10
 
-                # if already processed and too expensive, skip reevaluation
-                new_cost = costs[current_pos] + step_dist
                 if new_cost >= costs[new_pos] or new_cost >= costs[goal]:
                     continue
 
@@ -226,12 +231,16 @@ class PathfindingController:
             direction_index = directions[current_coord]
 
         # Get the pathfinding error (to ensure true closest block is selected)
-        penultimate_coord = (
-            goal[0] - walks[directions[goal]][0],
-            goal[1] - walks[directions[goal]][1]
-        )
-        penultimate_cost = costs[penultimate_coord]
-        cost_approximation = penultimate_cost + util.get_distance(goal_pos, _to_worldspace(penultimate_coord))
+        if goal != start:
+            penultimate_coord = (
+                goal[0] - walks[directions[goal]][0],
+                goal[1] - walks[directions[goal]][1]
+            )
+            penultimate_cost = costs[penultimate_coord]
+            cost_approximation = penultimate_cost + util.get_distance(goal_pos, _to_worldspace(penultimate_coord))
+
+        else:
+            cost_approximation = costs[goal]
 
         return PathfindingResult(waypoints[::-1], cost_approximation, goal_pos)
 

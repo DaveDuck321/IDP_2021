@@ -37,7 +37,7 @@ class CurrentRoute:
     def vote_for_route(self, new_waypoints):
         # Check if routes are identical. This must be right, stick with it
         if new_waypoints == self.waypoints:
-            self.votes += 20
+            self.votes = min(50, self.votes + 5)
             return
 
         routes_different = False
@@ -54,12 +54,12 @@ class CurrentRoute:
                 return
 
         # Routes are certainly different, vote against current route
-        self.votes -= 2
+        self.votes -= 5
 
         # If the current route is unpopular, change it
         if self.votes < 0:
             self.waypoints = new_waypoints
-            self.votes = 100
+            self.votes = 50
 
 
 class ExternalController:
@@ -109,6 +109,9 @@ class ExternalController:
                 message.distance_readings
             )
 
+        elif isinstance(message, protocol.IRReportFailed):
+            self.mapping_controller.invalid_region(message.block_position, 0.1)
+
         elif isinstance(message, protocol.ReportBlockColor):
             print("Block color reported")
             self.robot_paths[message.robot_name].reset_votes()
@@ -118,7 +121,7 @@ class ExternalController:
             else:
                 # The robot was the correct color so is now moving the block
                 # Invalidate this old region now that it has changed
-                self.mapping_controller.invalid_region(message.block_position)
+                self.mapping_controller.invalid_region(message.block_position, 1)
 
         elif isinstance(message, protocol.ReportBlockDropoff):
             self.robot_paths[message.robot_name].reset_votes()

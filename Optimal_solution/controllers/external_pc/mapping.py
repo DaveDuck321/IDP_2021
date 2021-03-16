@@ -21,7 +21,8 @@ MAP_RESULTION = (
 )
 
 # Region what will be invalidated when a block is collected
-INVALIDATION_REGION = 2 * ROBOT_RADIUS
+INVALIDATION_REGION = ROBOT_RADIUS
+CLUSTER_FUDGE_DISTANCE = 0.5  # m
 CLUSTER_BLOCK_OVERLAP = 0.8
 CLUSTER_OVERLAP_THRESHOLD = 0.8
 CLUSTER_PROXIMITY_THRESHOLD = 0.1
@@ -58,14 +59,14 @@ class MappingController:
         self._display_occupancy = display_occupancy
         self.__last_sensor_positions = {}
 
-    def invalid_region(self, position):
+    def invalid_region(self, position, scale):
         """
             Invalidates the region surrounding a single block.
             This should be used after the robot changes the environment for any reason.
         """
         block_locations = self.predict_block_locations()
 
-        invalidation_region = INVALIDATION_REGION / 2
+        invalidation_region = scale * INVALIDATION_REGION / 2
         self.hard_mapping.invalid_region(block_locations, position, invalidation_region)
         self.fuzzy_mapping.invalid_region(position, invalidation_region)
 
@@ -73,7 +74,7 @@ class MappingController:
         """
             A robot has just read a block color, log this block position to the world map.
         """
-        invalidation_region = INVALIDATION_REGION / 2
+        invalidation_region = INVALIDATION_REGION
 
         # Old map might have just become illegal, fix it now
         self.hard_mapping.invalid_region([], block_location, invalidation_region)
@@ -156,6 +157,9 @@ class MappingController:
     def output_to_displays(self):
         occupancy_map = util.get_intensity_map_pixels(self.get_occupancy_map())
 
+        # Display block locations on this map
+        block_locations = self.predict_block_locations()
+
         # Draw robot and sensor positions to visualization
         for robot_name in self.__robot_positions_ref:
             # Multiple robots
@@ -167,11 +171,19 @@ class MappingController:
                 sensor_pos = _to_screenspace(sensor)
                 occupancy_map[sensor_pos[0], sensor_pos[1], :] = (0, 255, 0)
 
+        # Output confirmed block positions
+        for (block_location, _) in self.hard_mapping.confirmed_blocks:
+            coord = _to_screenspace(block_location)
+            occupancy_map[coord[0], coord[1], :] = (255, 0, 255)
+
+        for block_location in block_locations:
+            coord = _to_screenspace(block_location.coord)
+            block_color = util.get_robot_color(block_location.color)
+
+            occupancy_map[coord[0], coord[1], :] = block_color
+
         # Output to webots display
         util.display_numpy_pixels(self._display_occupancy, occupancy_map)
-
-        # Display block locations on this map
-        block_locations = self.predict_block_locations()
 
         # Output movement status map, marking block locations
         movement_status = util.get_intensity_map_pixels(self.get_clear_movement_map())
