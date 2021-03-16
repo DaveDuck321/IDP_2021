@@ -262,6 +262,8 @@ class RobotController:
             self.scanning_controller.stationary_scan(self.positioning_system)
 
         elif self.current_task == Tasks.SEARCHING_BLOCK:
+            # Scan to (attempt) avoid false positives
+            self.scanning_controller.driving_scan(self.positioning_system)
             # Algorithm returns code upon completion
             result = self.block_searching_algorithm()
             if result == BlockSearch.FOUND_BLOCK:
