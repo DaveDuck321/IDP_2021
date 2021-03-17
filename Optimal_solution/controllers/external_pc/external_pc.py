@@ -14,7 +14,7 @@ from pathfinding import PathfindingController
 
 
 GOAL_TOLERANCE = 0.3
-ROBOT_TAKEOVER_DISTANCE = 0.2
+ROBOT_TAKEOVER_DISTANCE = 0.3
 WAYPOINT_TOLERANCE = 0.1
 
 TIME_STEP = 20
@@ -53,7 +53,7 @@ class CurrentRoute:
     def vote_for_route(self, new_waypoints):
         # Check if routes are identical. This must be right, stick with it
         if new_waypoints == self.waypoints:
-            self.votes = min(50, self.votes + 5)
+            self.votes = min(20, self.votes + 5)
             return
 
         routes_different = False
@@ -70,12 +70,15 @@ class CurrentRoute:
                 return
 
         # Routes are certainly different, vote against current route
-        self.votes -= 5
+        if len(new_waypoints) < len(self.waypoints):
+            self.votes -= 5  # Shorter routes are preferable
+        else:
+            self.votes -= 2
 
         # If the current route is unpopular, change it
         if self.votes < 0:
             self.waypoints = new_waypoints
-            self.votes = 50
+            self.votes = 20
 
 
 class ExternalController:
@@ -106,6 +109,7 @@ class ExternalController:
 
         self.pathfinding = PathfindingController(
             self.robot.getDevice("display_pathfinding"),
+            self.robot.getDevice("display_navigation")
         )
 
     def process_message(self, message):
@@ -127,7 +131,8 @@ class ExternalController:
             )
 
         elif isinstance(message, protocol.IRReportFailed):
-            self.mapping_controller.invalid_region(message.block_position, 1)
+            self.robot_paths[message.robot_name].reset_votes()
+            self.mapping_controller.invalid_region(message.block_position, 2)
 
         elif isinstance(message, protocol.ReportBlockColor):
             self.robot_paths[message.robot_name].reset_votes()
@@ -151,8 +156,8 @@ class ExternalController:
             if self.robot_dropoffs[message.robot_name] == 4:
                 # Mark the robot as dead
                 self.robot_states[message.robot_name] = RobotState(
-                    self.robot_states[message.robot_name].robot_position,
-                    self.robot_states[message.robot_name].robot_bearing,
+                    self.robot_states[message.robot_name].position,
+                    self.robot_states[message.robot_name].bearing,
                     self.robot_states[message.robot_name].holding_block,
                     True
                 )
@@ -194,7 +199,9 @@ class ExternalController:
 
         # Should to robot switch over to this new path?
         self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
-        self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
+        if closest_path.require_popout:
+            self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
+
         chosen_path = self.robot_paths[robot_name].waypoints
 
         next_waypoint = chosen_path[0]
@@ -229,31 +236,37 @@ class ExternalController:
             The robot is holding a block, ensure it returns to its spawn position.
             If the robot is close enough for mapping to be useless, let the robot takeover.
         """
+
         robot_position = self.robot_states[robot_name].position
-        closest_path = self.pathfinding.get_robot_path(
-            robot_name, self.robot_states, self.robot_paths, robot_position, util.ROBOT_SPAWN[robot_name]
+
+        # Robot is close enough to handle everything by itself
+        destination_distance = util.get_distance(robot_position, util.ROBOT_SPAWN[robot_name])
+        if destination_distance < ROBOT_TAKEOVER_DISTANCE:
+            self.robot_paths[robot_name].reset_votes()
+            self.radio.send_message(protocol.AskRobotDeposit(
+                robot_name, util.ROBOT_SPAWN[robot_name]
+            ))
+            return
+
+        # More complex routes needs to avoid collisions
+        closest_path = self.pathfinding.get_spawn_path(
+            robot_name, self.robot_states, self.robot_paths, robot_position
         )
 
         # Check if it was possible to find a path
         if not closest_path.success:
             return
 
-        last_waypoint = closest_path.waypoints[-1]
-        destination_distance = util.get_distance(robot_position, last_waypoint)
+        # Begin navigating back home
+        # Navigate to most popular waypoint
+        self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
 
-        # Should the robot takeover and deposit the block itself?
-        if destination_distance < ROBOT_TAKEOVER_DISTANCE:
-            self.robot_paths[robot_name].reset_votes()
-            self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
-            self.radio.send_message(protocol.AskRobotDeposit(
-                robot_name, last_waypoint
-            ))
-        else:
-            # Begin navigating back home
-            # Navigate to next waypoint
-            self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
+        if not closest_path.require_popout:
             self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
-            self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_path.waypoints[0]))
+
+        self.radio.send_message(protocol.GiveRobotTarget(
+            robot_name, self.robot_paths[robot_name].waypoints[0]
+        ))
 
     def choose_action_for_robot(self, robot_name):
         if self.robot_states[robot_name].holding_block:
