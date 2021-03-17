@@ -141,6 +141,10 @@ class ExactMapping:
 
             if util.get_distance(cluster.coord, position) < invalidation_radius:
                 if(cluster.known_block is not None):
+                    if cluster.known_block not in self.confirmed_blocks:
+                        print("[WARNING] unexpected block not in confirmed_blocks")
+                        continue
+
                     print("[info] Block in invalidation cluster, removing")
                     self.confirmed_blocks.remove(cluster.known_block)
 

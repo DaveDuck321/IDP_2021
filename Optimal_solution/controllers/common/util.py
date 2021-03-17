@@ -167,4 +167,10 @@ def get_static_distance(sensor_pos, sensor_facing, obstacles_pos, obstacles_radi
         distances = np.append(distance_outer, distance_inner)
         combined_array = np.append(combined_array, distances)
 
-    return np.amin(combined_array[combined_array > 0])
+    # This is strange, maybe the robot gets perfectly aligned with the coordinate axis?
+    # This error has only ever been encountered once, check for it anyway
+    filtered_array = combined_array[combined_array > 0]
+    if len(filtered_array) == 0:
+        return 0
+
+    return np.amin(filtered_array)

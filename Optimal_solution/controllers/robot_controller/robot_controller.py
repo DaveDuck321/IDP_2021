@@ -278,12 +278,20 @@ class RobotController:
             if result == BlockSearch.FOUND_BLOCK:
                 self.queued_task = Tasks.SCANNING_COLOR
 
-            elif result == BlockSearch.FAILED or result == BlockSearch.TIMEOUT:
-                self.queued_task = Tasks.REVERSING
+            elif result != BlockSearch.IN_PROGRESS:
+                # Report this search has failed
                 self.radio.send_message(protocol.IRReportFailed(
                     self.robot.getName(),
                     self.positioning_system.block_detection_position()
                 ))
+                if result == BlockSearch.TIMEOUT:
+                    # Robot has moved forwards, avoid unintended collisions
+                    self.queued_task = Tasks.REVERSING
+                elif result == BlockSearch.FAILED:
+                    # Robot is probably in a safe position to scan
+                    self.queued_task = Tasks.FULL_SCAN
+                else:
+                    raise NotImplementedError()
 
         elif self.current_task == Tasks.SCANNING_COLOR:
             self.drive_controller.halt()
@@ -314,8 +322,6 @@ class RobotController:
                 self.queued_task = Tasks.REVERSING
 
         elif self.current_task == Tasks.FACE_TARGET_SEARCH:
-            self.queued_task = Tasks.SEARCHING_BLOCK
-
             # Algorithm returns True upon completion
             is_finished = self.drive_controller.turn_toward_point(
                 self.positioning_system,

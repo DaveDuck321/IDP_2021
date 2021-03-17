@@ -90,6 +90,7 @@ class PositioningSystem:
             bearing_error -= 2 * math.pi
         elif bearing_error < -math.pi:
             bearing_error += 2 * math.pi
+
         return bearing_error
 
     def get_distance_readings(self):
