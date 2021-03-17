@@ -5,6 +5,7 @@ WALL_REJECTION_FRAC = 0.9
 SEARCH_ANGLE = math.pi / 2.0   # angle of total search area, centered on initial direction
 MAX_BLOCK_DIST = 0.4           # max distance away a block would be detected in m
 BLOCK_IN_GRABBER_DIST = 0.15   # distance reading when block in grabber
+TIMER_SLOW_DISTANCE = 0.25     # Slows the TIMOUT timer when block is close enough to sensor
 
 
 class BlockSearch:
@@ -27,7 +28,7 @@ class BlockSearch:
 
         self.closing_pincer = False
 
-        self.FUBAR_timer = 250
+        self.FUBAR_timer = 500
 
     def clean(self):
         self.drive_controller.halt()
@@ -74,8 +75,13 @@ class BlockSearch:
                 if self.drive_controller.rotate_absolute_angle(self.positioning_system, self.min_IR_angle):
                     self.sweeping_back = True
             else:
-                self.FUBAR_timer -= 1
-                if self.FUBAR_timer == 0:
+                if IR_dist > TIMER_SLOW_DISTANCE:
+                    self.FUBAR_timer -= 2
+                else:
+                    # Slows the timer to prevent unnecessary fails
+                    self.FUBAR_timer -= 1
+
+                if self.FUBAR_timer <= 0:
                     print('[Warning]: Took too long to reach block')
                     return self.TIMEOUT
 

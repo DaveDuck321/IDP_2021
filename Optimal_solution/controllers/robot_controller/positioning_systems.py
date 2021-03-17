@@ -1,5 +1,6 @@
 from common import util
 import math
+import IR_block_search
 
 ARM_RADIUS = 0.15  # 150 mm
 SPEED_OF_SOUND = 343
@@ -99,6 +100,18 @@ class PositioningSystem:
         return (
             get_echo_distance(self._front_distance.getValue()),
             get_echo_distance(self._rear_distance.getValue())
+        )
+
+    def block_detection_position(self):
+        """
+            Returns the furthest position at which the robot should be able to detect a block.
+        """
+
+        robot_pos = self.get_2D_position()
+        robot_bearing = self.get_world_bearing()
+        return (
+            robot_pos[0] + IR_block_search.MAX_BLOCK_DIST * math.cos(robot_bearing),
+            robot_pos[1] + IR_block_search.MAX_BLOCK_DIST * math.sin(robot_bearing)
         )
 
     def get_pincer_position(self):

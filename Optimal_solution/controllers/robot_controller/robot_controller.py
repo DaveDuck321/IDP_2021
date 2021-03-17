@@ -40,6 +40,8 @@ class Tasks(Enum):
     REJECT_BLOCK = 8
     REVERSING_LONG = 9
 
+    FULL_SCAN = 10
+
 
 class RobotController:
     def __init__(self, sensor_polling=5):
@@ -183,6 +185,8 @@ class RobotController:
         print(f"[INFO] {self.robot.getName()} starting new task: {about_to_start}")
         if about_to_start == Tasks.INITIAL_SCAN:
             self.drive_controller.halt()
+        if about_to_start == Tasks.FULL_SCAN:
+            self.scanning_controller.clockwise = True
         if about_to_start == Tasks.DEAD:
             self.drive_controller.halt()
             self.positioning_system.kill_turret()
@@ -235,7 +239,7 @@ class RobotController:
         # Update the controller
         self.send_new_scan()
 
-        # Ensure IR readings are upto-date
+        # Ensure IR readings are up-to-date
         self.IR_sensor.get_distance()
 
         # Execute the current task
@@ -257,6 +261,11 @@ class RobotController:
                 # Only blank the robot controller if nothing is planned
                 self.queued_task = Tasks.NONE
 
+        elif self.current_task == Tasks.FULL_SCAN:
+            if self.scanning_controller.active_scan(self.positioning_system):
+                # Only blank the robot controller if nothing is planned
+                self.queued_task = Tasks.NONE
+
         elif self.current_task == Tasks.NONE:
             # Scan to update map
             self.scanning_controller.stationary_scan(self.positioning_system)
@@ -273,7 +282,7 @@ class RobotController:
                 self.queued_task = Tasks.REVERSING
                 self.radio.send_message(protocol.IRReportFailed(
                     self.robot.getName(),
-                    self.positioning_system.get_pincer_position()
+                    self.positioning_system.block_detection_position()
                 ))
 
         elif self.current_task == Tasks.SCANNING_COLOR:
@@ -318,7 +327,7 @@ class RobotController:
         elif self.current_task == Tasks.REVERSING or self.current_task == Tasks.REVERSING_LONG:
             # Algorithm returns True upon completion
             if self.reversing_algorithm():
-                self.queued_task = Tasks.NONE
+                self.queued_task = Tasks.FULL_SCAN
 
         elif self.current_task == Tasks.DEPOSITING_BLOCK:
             # Algorithm returns True upon completion
