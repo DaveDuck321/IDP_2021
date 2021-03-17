@@ -6,12 +6,12 @@ from common import util
 import numpy as np
 
 
-ARM_RADIUS = 0.15  # 150 mm
+ARM_RADIUS = 0.14  # 150 mm
 BLOCK_WIDTH = 12  # In px
 BLOCK_OBSTACLE_WIDTH = 0.1
 ROBOT_RADIUS = 1.4 * ARM_RADIUS
-ULTRASOUND_MINIMUM_READING = 0.1
-ULTRASOUND_RANGE = 1.5  # 1.5 m
+ULTRASOUND_MINIMUM_READING = 0.05
+ULTRASOUND_RANGE = 1.3  # 1.5 m
 ULTRASOUND_NOISE = 0.02  # Standard deviation in distance measurement = 3 cm
 ULTRASOUND_ANGLE = (27.2 / 360) * np.pi  # 27.2 degrees total FOV
 WORLD_RESOLUTION = 50  # px per meter (reduce for faster computation)
@@ -21,12 +21,13 @@ MAP_RESULTION = (
 )
 
 # Region what will be invalidated when a block is collected
-INVALIDATION_REGION = ROBOT_RADIUS
+INVALIDATION_REGION = 0.5 * ROBOT_RADIUS
 CLUSTER_FUDGE_DISTANCE = 0.2  # m
 CLUSTER_OVERLAP_THRESHOLD = 0.8
 CLUSTER_PROXIMITY_THRESHOLD = 0.1
 CLUSTER_THRESHOLD = 4  # Require 4px to recognize block
 FORCE_INVAILD_THRESHOLD = 0.5
+SPAWN_REGION_RADIUS = 2 * ROBOT_RADIUS
 
 
 def _to_screenspace(coord):
@@ -77,7 +78,7 @@ class MappingController:
 
         block_locations = self.predict_block_locations()
 
-        invalidation_region = scale * INVALIDATION_REGION / 2
+        invalidation_region = scale * INVALIDATION_REGION
         self.hard_mapping.invalid_region(block_locations, position, invalidation_region)
         self.fuzzy_mapping.invalid_region(position, invalidation_region)
 

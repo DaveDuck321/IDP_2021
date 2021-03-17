@@ -206,4 +206,16 @@ class ExactMapping:
                 new_cluster.assign_known_color(block)
                 clusters.append(new_cluster)
 
-        return clusters
+        # Ensure no clusters are inside the spawn region
+        filtered_clusters = []
+        for cluster in clusters:
+            # Each robot spawn position is defined here
+            for robot_name in util.ROBOT_SPAWN:
+                spawn_pos = util.ROBOT_SPAWN[robot_name]
+                if util.get_distance(spawn_pos, cluster.coord) < mapping.SPAWN_REGION_RADIUS:
+                    break  # Block is inside spawn region, don't recollect it
+            else:
+                # Block was not inside any spawn radius, lets save it
+                filtered_clusters.append(cluster)
+
+        return filtered_clusters
