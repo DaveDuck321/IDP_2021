@@ -1,5 +1,5 @@
 from fuzzy_mapping import UltrasoundMapping
-from hard_mapping import ExactMapping
+from hard_mapping import ExactMapping, ClusterLocation
 
 from common import util
 
@@ -28,6 +28,10 @@ CLUSTER_PROXIMITY_THRESHOLD = 0.1
 CLUSTER_THRESHOLD = 4  # Require 4px to recognize block
 FORCE_INVAILD_THRESHOLD = 0.5
 SPAWN_REGION_RADIUS = 2 * ROBOT_RADIUS
+
+# If no blocks can be identified, patrol instead
+PATROL_DECAY = 0.6  # m  robot cannot see patrol block if it is too close
+PATROL_COORDINATES = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
 
 
 def _to_screenspace(coord):
@@ -76,7 +80,7 @@ class MappingController:
         """
         self.invalidate_cache()
 
-        block_locations = self.predict_block_locations()
+        block_locations = self.predict_block_locations({})
 
         invalidation_region = scale * INVALIDATION_REGION
         self.hard_mapping.invalid_region(block_locations, position, invalidation_region)
@@ -168,7 +172,7 @@ class MappingController:
         self.invalidate_cache()
         self.hard_mapping.add_drop_off_region(position)
 
-    def predict_block_locations(self):
+    def predict_block_locations(self, robot_states, generate_fake_blocks=False):
         """
             Returns a list of ClusterLocation objects, containing the positions of blocks
             and the relative certainties.
@@ -179,14 +183,26 @@ class MappingController:
         occupancy_map = self.get_occupancy_map()
         cluster_candidates = self.fuzzy_mapping.generate_potential_clusters()
 
-        self.__cache_block_locations = self.hard_mapping.predict_block_locations(cluster_candidates, occupancy_map)
+        block_locations = self.hard_mapping.predict_block_locations(cluster_candidates, occupancy_map)
+
+        if generate_fake_blocks:
+            # Try to avoid stalemates by patrolling
+            for block in PATROL_COORDINATES:
+                for robot_name in robot_states:
+                    # Robots are near, phantom block is now a problem
+                    if util.get_distance(robot_states[robot_name].position, block) < PATROL_DECAY:
+                        break
+                else:
+                    block_locations.append(ClusterLocation(block, 1, 1, 0.4))
+
+        self.__cache_block_locations = block_locations
         return self.__cache_block_locations
 
     def output_to_displays(self):
         occupancy_map = util.get_intensity_map_pixels(self.get_occupancy_map())
 
         # Display block locations on this map
-        block_locations = self.predict_block_locations()
+        block_locations = self.predict_block_locations({})
 
         # Draw robot and sensor positions to visualization
         for robot_name in self.__robot_positions_ref:

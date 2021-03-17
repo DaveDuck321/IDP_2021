@@ -44,7 +44,7 @@ class CurrentRoute:
         for index, waypoint in enumerate(self.waypoints):
             if util.get_distance(waypoint, robot_position) < WAYPOINT_TOLERANCE:
                 # Robot is close enough to waypoint to skip straight to this point in its path
-                current_waypoint = min(index + 1, len(self.waypoints) - 1)
+                current_waypoint = index + 1
 
         if current_waypoint != -1:
             # New waypoint was found, skip to this point
@@ -53,7 +53,7 @@ class CurrentRoute:
     def vote_for_route(self, new_waypoints):
         # Check if routes are identical. This must be right, stick with it
         if new_waypoints == self.waypoints:
-            self.votes = min(20, self.votes + 5)
+            self.votes = min(100, self.votes + 5)
             return
 
         routes_different = False
@@ -78,7 +78,7 @@ class CurrentRoute:
         # If the current route is unpopular, change it
         if self.votes < 0:
             self.waypoints = new_waypoints
-            self.votes = 20
+            self.votes = 50
 
 
 class ExternalController:
@@ -181,13 +181,29 @@ class ExternalController:
 
             self.process_message(message)
 
+    def should_patrol(self, robot_name):
+        """
+            If a deadlock is detected, attempt to resolve it by patrolling to fake blocks.
+        """
+        # for other_name in self.robot_paths:
+        #    # If the robot has a route, don't interfere... this isn't a deadlock yet
+        #    if len(self.robot_paths[other_name].waypoints) > 0:
+        #        return False
+
+        # print("Patrolling enabled")
+        # return True
+
+        return len(self.robot_paths[robot_name].waypoints) == 0
+
     def request_block_collection(self, robot_name):
         """
             Find the closest block of the correct color, ask the robot to drive towards it.
             If the robot is close enough for mapping to be useless, let the robot takeover.
         """
         robot_position = self.robot_states[robot_name].position
-        block_locations = self.mapping_controller.predict_block_locations()
+
+        block_locations = self.mapping_controller.predict_block_locations(
+            self.robot_states, self.should_patrol(robot_name))
         closest_path = self.pathfinding.get_nearest_block_path(
             block_locations, robot_name, self.robot_states, self.robot_paths,
             robot_position
@@ -195,6 +211,19 @@ class ExternalController:
 
         # Check if map was detailed enough to find path
         if not closest_path.success:
+            # Send last waypoint message anyway
+
+            self.robot_paths[robot_name].waypoints = self.pathfinding.trim_legal_waypoints(
+                self.robot_paths[robot_name].waypoints,
+                robot_name,
+                self.robot_states,
+                self.robot_paths,
+                False
+            )
+            if len(self.robot_paths[robot_name].waypoints) > 0:
+                self.radio.send_message(protocol.GiveRobotTarget(
+                    robot_name, self.robot_paths[robot_name].waypoints[0]
+                ))
             return
 
         # Should to robot switch over to this new path?
@@ -203,6 +232,9 @@ class ExternalController:
             self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
 
         chosen_path = self.robot_paths[robot_name].waypoints
+        if len(chosen_path) == 0:
+            self.robot_paths[robot_name].reset_votes()
+            return
 
         next_waypoint = chosen_path[0]
         last_waypoint = chosen_path[-1]
@@ -255,6 +287,20 @@ class ExternalController:
 
         # Check if it was possible to find a path
         if not closest_path.success:
+            # Send last waypoint message anyway
+            # But ensure at least part of it is legal
+            self.robot_paths[robot_name].waypoints = self.pathfinding.trim_legal_waypoints(
+                self.robot_paths[robot_name].waypoints,
+                robot_name,
+                self.robot_states,
+                self.robot_paths,
+                True
+            )
+
+            if len(self.robot_paths[robot_name].waypoints) > 0:
+                self.radio.send_message(protocol.GiveRobotTarget(
+                    robot_name, self.robot_paths[robot_name].waypoints[0]
+                ))
             return
 
         # Begin navigating back home
@@ -264,9 +310,12 @@ class ExternalController:
         if not closest_path.require_popout:
             self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
 
-        self.radio.send_message(protocol.GiveRobotTarget(
-            robot_name, self.robot_paths[robot_name].waypoints[0]
-        ))
+        if len(self.robot_paths[robot_name].waypoints) > 0:
+            self.radio.send_message(protocol.GiveRobotTarget(
+                robot_name, self.robot_paths[robot_name].waypoints[0]
+            ))
+        else:
+            self.robot_paths[robot_name].reset_votes()
 
     def choose_action_for_robot(self, robot_name):
         if self.robot_states[robot_name].holding_block:
@@ -295,7 +344,7 @@ class ExternalController:
             self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
 
         # Debug visualizations
-        block_locations = self.mapping_controller.predict_block_locations()
+        block_locations = self.mapping_controller.predict_block_locations(self.robot_states)
         self.pathfinding.output_to_display(self.robot_states, block_locations, self.robot_paths)
         self.mapping_controller.output_to_displays()
 

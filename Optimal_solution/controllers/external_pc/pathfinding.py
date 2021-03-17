@@ -186,7 +186,7 @@ class PathfindingController:
         ], dtype=np.int32)
 
         pathfinding_map = self._simple_map.copy()
-        pathfinding_map[goal[0] - 1: goal[0] + 1, goal[1] - 1: goal[1] + 1] = True
+        pathfinding_map[goal[0] - 1: goal[0] + 2, goal[1] - 1: goal[1] + 2] = True
         other_robot_map = self._generate_cooperation_map(robot_name, robot_states, other_paths, is_returning)
 
         popout_position = None
@@ -324,6 +324,29 @@ class PathfindingController:
             return None
 
         return sorted_distances[0]
+
+    def trim_legal_waypoints(self, waypoints, robot_name, robot_states, other_paths, is_returning):
+        """
+            Ensure the robot can always move, but never in an illegal way
+        """
+        if len(waypoints) == 0:
+            return []
+
+        pathfinding_map = np.logical_and(
+            self._simple_map.copy(),
+            self._generate_cooperation_map(robot_name, robot_states, other_paths, is_returning)
+        )
+
+        # Always assume first waypoint is fine
+        legal_waypoints = [waypoints[0]]
+        for waypoint in waypoints[1:]:
+            coord = tuple(_to_screenspace(waypoint))
+            if not pathfinding_map[coord]:
+                break
+
+            legal_waypoints.append(waypoint)
+
+        return legal_waypoints
 
     def get_spawn_path(self, robot_name, robot_states, other_paths, robot_pos):
         """

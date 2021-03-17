@@ -304,7 +304,7 @@ class RobotController:
             # Alert the controller of the true block color
             self.radio.send_message(protocol.ReportBlockColor(
                 self.robot.getName(),
-                self.positioning_system.get_pincer_position(),
+                self.positioning_system.get_2D_position(),
                 block_color
             ))
 
