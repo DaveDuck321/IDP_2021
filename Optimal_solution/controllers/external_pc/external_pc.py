@@ -15,7 +15,7 @@ from pathfinding import PathfindingController
 
 GOAL_TOLERANCE = 0.3
 ROBOT_TAKEOVER_DISTANCE = 0.2
-WAYPONT_TOLERANCE = 0.1
+WAYPOINT_TOLERANCE = 0.1
 
 TIME_STEP = 20
 RobotState = namedtuple("RobotState", ["position", "bearing", "holding_block", "dead"])
@@ -42,7 +42,7 @@ class CurrentRoute:
         """
         current_waypoint = -1
         for index, waypoint in enumerate(self.waypoints):
-            if util.get_distance(waypoint, robot_position) < WAYPONT_TOLERANCE:
+            if util.get_distance(waypoint, robot_position) < WAYPOINT_TOLERANCE:
                 # Robot is close enough to waypoint to skip straight to this point in its path
                 current_waypoint = min(index + 1, len(self.waypoints) - 1)
 
@@ -194,6 +194,7 @@ class ExternalController:
 
         # Should to robot switch over to this new path?
         self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
+        self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
         chosen_path = self.robot_paths[robot_name].waypoints
 
         next_waypoint = chosen_path[0]
@@ -203,7 +204,7 @@ class ExternalController:
         target_distance = util.get_distance(robot_position, last_waypoint)
         if target_distance < ROBOT_TAKEOVER_DISTANCE:
             self.radio.send_message(protocol.AskRobotSearch(
-                robot_name, next_waypoint
+                robot_name, last_waypoint
             ))
 
             return
@@ -251,6 +252,7 @@ class ExternalController:
             # Begin navigating back home
             # Navigate to next waypoint
             self.robot_paths[robot_name].vote_for_route(closest_path.waypoints)
+            self.robot_paths[robot_name].crop_waypoints(self.robot_states[robot_name].position)
             self.radio.send_message(protocol.GiveRobotTarget(robot_name, closest_path.waypoints[0]))
 
     def choose_action_for_robot(self, robot_name):
