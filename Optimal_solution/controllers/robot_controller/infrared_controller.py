@@ -1,3 +1,6 @@
+from common import util
+
+
 class IRSensor:
     def __init__(self, sensor, polling_rate):
         """
@@ -24,10 +27,9 @@ class IRSensor:
         x = self.sensor.getValue()
         y = float('inf')
         if x is None:
-            print('[Warning]: Attempted IR sensor reading when no data available')
+            util.log_msg(util.Logging.WARNING, "Attempted IR sensor reading when no data available")
             return y
         if x > 654:  # maximum received value from sensor, anything more is too close
-            # print("attempted to calculate distance for value closer than sensor capability")
             return y
         for val_pair in self.pairs:
             (r1, r2), (d1, d2) = val_pair

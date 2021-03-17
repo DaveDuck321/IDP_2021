@@ -27,7 +27,6 @@ class PincerController:
         self.left_motor.setPosition(open_angle)
         self.right_motor.setPosition(-open_angle)
         if self._timer > self.PINCER_TIMER:
-            # print("[INFO]: Pincer Opened")
             self._timer = 0
             self.is_closed = False
             return True
@@ -38,7 +37,6 @@ class PincerController:
         self.left_motor.setPosition(0.0)
         self.right_motor.setPosition(0.0)
         if self._timer > self.PINCER_TIMER:
-            # print("[INFO]: Pincer Closed")
             self._timer = 0
             self.is_closed = True
             return True

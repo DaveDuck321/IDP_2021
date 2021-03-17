@@ -142,10 +142,10 @@ class ExactMapping:
             if util.get_distance(cluster.coord, position) < invalidation_radius:
                 if(cluster.known_block is not None):
                     if cluster.known_block not in self.confirmed_blocks:
-                        print("[WARNING] unexpected block not in confirmed_blocks")
+                        util.log_msg(util.Logging.WARNING, "unexpected block not in confirmed_blocks")
                         continue
 
-                    print("[info] Block in invalidation cluster, removing")
+                    util.log_msg(util.Logging.WARNING, "Block in invalidation cluster, removing")
                     self.confirmed_blocks.remove(cluster.known_block)
 
         # Also delete overlapping blocks if they are not in a cluster
@@ -153,7 +153,7 @@ class ExactMapping:
             block_pos, _ = self.confirmed_blocks[index]
             if util.get_distance(block_pos, position) < invalidation_size:
                 # Purge this block
-                print("[info] Block in invalidation region, removing")
+                util.log_msg(util.Logging.INFO, "Block in invalidation region, removing")
                 self.confirmed_blocks.pop(index)
 
     def add_drop_off_region(self, position):
@@ -182,10 +182,7 @@ class ExactMapping:
 
                 if cluster_distance < mapping.CLUSTER_PROXIMITY_THRESHOLD:
                     if (cluster.color is not None):
-                        print("[Warning] Multiple blocks identified in the same cluster")
-
-                    # if color_consumed:
-                    #    print("[Warning] The same blocks has been assigned to multiple clusters")
+                        util.log_msg(util.Logging.WARNING, "Multiple blocks identified in the same cluster")
 
                     color_consumed = True
                     cluster.assign_known_color(block)
@@ -203,7 +200,6 @@ class ExactMapping:
                     closest_cluster.cluster.assign_known_color(block)
                     continue
 
-                # print("[Warning] Block color has been identified but does not exist on map")
                 new_cluster = ClusterLocation(
                     block_location, 20, 10, mapping.BLOCK_OBSTACLE_WIDTH
                 )

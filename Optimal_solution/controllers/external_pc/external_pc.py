@@ -185,13 +185,6 @@ class ExternalController:
         """
             If a deadlock is detected, attempt to resolve it by patrolling to fake blocks.
         """
-        # for other_name in self.robot_paths:
-        #    # If the robot has a route, don't interfere... this isn't a deadlock yet
-        #    if len(self.robot_paths[other_name].waypoints) > 0:
-        #        return False
-
-        # print("Patrolling enabled")
-        # return True
 
         return len(self.robot_paths[robot_name].waypoints) == 0
 

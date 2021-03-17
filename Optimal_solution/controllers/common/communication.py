@@ -2,6 +2,7 @@
 
 import json
 from common.protocol import Message, build_message_from_JSON
+from common import util
 
 
 class Radio:
@@ -58,7 +59,7 @@ class Radio:
         assert isinstance(message_obj, Message)
 
         if debug:
-            print("[INFO] Sent message:", message_obj)
+            util.log_msg(util.Logging.DEBUG, message_obj)
 
         message_string = json.dumps(message_obj, default=vars)
         self._emitter.send(message_string.encode('utf-8'))

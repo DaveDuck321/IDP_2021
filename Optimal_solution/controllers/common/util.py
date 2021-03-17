@@ -1,11 +1,31 @@
 import numpy as np
 from controller import Display
+from enum import Enum
 
+LOGGING_LEVEL = 3
 WORLD_BOUNDS = np.array([1.2 - 0.01, 1.2 - 0.01])  # UPDATE THIS WITH WORLD FILE
 ROBOT_SPAWN = {
     "Fluffy": (0.0, -0.28),
     "Small": (0.0, 0.28),
 }
+
+
+class Logging(Enum):
+    DEBUG = 0
+    INFO = 1
+    WARNING = 2
+    COMPETITION = 3
+
+
+def log_msg(log_type, message):
+    """
+        Log to console, based on current logging level.
+    """
+    if not isinstance(log_type, Logging):
+        raise ValueError("Bad logging level type")
+
+    if log_type.value >= LOGGING_LEVEL:
+        print(f"[{log_type}] {message}")
 
 
 def filter_nans(iterator, default=np.inf):

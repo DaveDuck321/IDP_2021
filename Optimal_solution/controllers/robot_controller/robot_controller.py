@@ -115,7 +115,7 @@ class RobotController:
             Take action on the received message.
         """
         if isinstance(message, protocol.KillImmediately):
-            print(f"[INFO] Killed robot {self.robot.getName()}")
+            util.log_msg(util.Logging.INFO, f"Killed robot {self.robot.getName()}")
             self.queued_task = Tasks.DEAD
 
         elif isinstance(message, protocol.GiveRobotTarget):
@@ -182,7 +182,7 @@ class RobotController:
                     DO NOT MODIFY THESE VARIABLES HERE
 
         """
-        print(f"[INFO] {self.robot.getName()} starting new task: {about_to_start}")
+        util.log_msg(util.Logging.INFO, f"{self.robot.getName()} starting new task: {about_to_start}")
         if about_to_start == Tasks.INITIAL_SCAN:
             self.drive_controller.halt()
         if about_to_start == Tasks.FULL_SCAN:
@@ -191,7 +191,7 @@ class RobotController:
             self.drive_controller.halt()
             self.positioning_system.kill_turret()
         if about_to_start == Tasks.SEARCHING_BLOCK:
-            print("[INFO] Started searching for block")
+            util.log_msg(util.Logging.INFO, "Started searching for block")
             self.block_searching_algorithm = BlockSearch(
                 self.IR_sensor,
                 self.positioning_system,
@@ -299,7 +299,7 @@ class RobotController:
             color_name = util.get_robot_color_string(block_color)
 
             # Log this color to the console for point
-            print(f"[INFO] Robot '{self.robot.getName()}' Found {color_name} block")
+            util.log_msg(util.Logging.INFO, f"Robot '{self.robot.getName()}' Found {color_name} block")
 
             # Alert the controller of the true block color
             self.radio.send_message(protocol.ReportBlockColor(
@@ -338,11 +338,11 @@ class RobotController:
         elif self.current_task == Tasks.DEPOSITING_BLOCK:
             # Algorithm returns True upon completion
             if self.depositing_algorithm():
-                print("[INFO] Block deposited")
+                util.log_msg(util.Logging.INFO, "Block deposited")
                 self.queued_task = Tasks.REVERSING_LONG
 
         else:
-            print("[ERROR] Unimplemented task type: ", self.current_task)
+            util.log_msg(util.Logging.ERROR, f"Unimplemented task type: {self.current_task}")
             raise NotImplementedError()
 
         # Tick finished, switch tasks if necessary

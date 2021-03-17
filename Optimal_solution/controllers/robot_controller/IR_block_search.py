@@ -61,11 +61,11 @@ class BlockSearch:
                     self.target_angle = (self.target_angle - SEARCH_ANGLE + 2 * math.pi) % (2 * math.pi)
                 else:
                     if IR_dist < min(MAX_BLOCK_DIST, wall_dist):
-                        print("[Info]: Block Detected")
+                        util.log_msg(util.Logging.INFO, "Block Detected")
                         self.block_found = True
                         self.sweeping_back = False
                     else:
-                        print("[Info]: No Block Found")
+                        util.log_msg(util.Logging.INFO, "No Block Found")
                         return self.FAILED
         else:
             # If a block has been found, rotate towards it, then drive until it is within
@@ -82,7 +82,7 @@ class BlockSearch:
                     self.FUBAR_timer -= 1
 
                 if self.FUBAR_timer <= 0:
-                    print('[Warning]: Took too long to reach block')
+                    util.log_msg(util.Logging.WARNING, "Took too long to reach block")
                     return self.TIMEOUT
 
                 if IR_dist > BLOCK_IN_GRABBER_DIST:
